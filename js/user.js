@@ -38,8 +38,7 @@ $(document).ready(function () {
                 Swal.fire({
                     icon: "success",
                     text: "register success",
-                    position: 'bottom-right'
-
+                    position: "center"
                 });
             },
             error: function (error) {
@@ -66,15 +65,17 @@ $(document).ready(function () {
             dataType: "json",
             success: function (data) {
                 console.log(data);
+                console.log('LOGIN RESPONSE:', data.user);
                 Swal.fire({
                     text: data.success,
                     showConfirmButton: false,
-                    position: 'bottom-right',
                     timer: 1000,
-                    timerProgressBar: true
+                    timerProgressBar: true,
+                    position: "center"
 
                 });
                 sessionStorage.setItem('userId', JSON.stringify(data.user.id))
+                sessionStorage.setItem('userEmail', data.user.email)
                 window.location.href = 'profile.html'
             },
             error: function (error) {
@@ -83,9 +84,9 @@ $(document).ready(function () {
                     icon: "error",
                     text: error.responseJSON.message,
                     showConfirmButton: false,
-                    position: 'bottom-right',
                     timer: 1000,
-                    timerProgressBar: true
+                    timerProgressBar: true,
+                    position: "center"
 
                 });
             }
@@ -107,12 +108,13 @@ $(document).ready(function () {
 
     $("#updateBtn").on('click', function (event) {
         event.preventDefault();
-        userId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId')
+        let userId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId')
 
         var data = $('#profileForm')[0];
         console.log(data);
         let formData = new FormData(data);
-        formData.append('userId', userId)
+        let updateUserId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId');
+        formData.append('userId', updateUserId)
 
         $.ajax({
             method: "POST",
@@ -126,9 +128,9 @@ $(document).ready(function () {
                 Swal.fire({
                     text: data.message,
                     showConfirmButton: false,
-                    position: 'bottom-right',
                     timer: 1000,
-                    timerProgressBar: true
+                    timerProgressBar: true,
+                    position: "center"
 
                 });
             },
@@ -172,9 +174,9 @@ $(document).ready(function () {
                 Swal.fire({
                     text: data.message,
                     showConfirmButton: false,
-                    position: 'bottom-right',
                     timer: 2000,
-                    timerProgressBar: true
+                    timerProgressBar: true,
+                    position: "center"
                 });
                 sessionStorage.removeItem('userId')
                 // window.location.href = 'home.html'
@@ -185,7 +187,27 @@ $(document).ready(function () {
         });
     });
 
-    
-
-
+    // Autofill profile form if user is logged in
+    const userId = JSON.parse(sessionStorage.getItem('userId'));
+    if (userId) {
+        $.ajax({
+            url: `${url}api/v1/customer-by-userid/${userId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(res) {
+                if (res.success && res.customer) {
+                    $('#title').val(res.customer.title || '');
+                    $('#last_name').val(res.customer.last_name || '');
+                    $('#first_name').val(res.customer.first_name || '');
+                    $('#address').val(res.customer.address || '');
+                    $('#city').val(res.customer.city || '');
+                    $('#zipcode').val(res.customer.zipcode || '');
+                    $('#phone').val(res.customer.phone || '');
+                    if (res.customer.image_path) {
+                        $('#avatarPreview').attr('src', res.customer.image_path);
+                    }
+                }
+            }
+        });
+    }
 })

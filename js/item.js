@@ -4,10 +4,13 @@ $(document).ready(function () {
     $('#itable').DataTable({
         ajax: {
             url: `${url}api/v1/items`,
-            dataSrc: "rows",
-            // headers: {
-            //     "Authorization": "Bearer " + access_token 
-            // },
+            dataSrc: function(json) {
+                // Accept both {rows: [...]} and direct array
+                if (json.rows) return json.rows;
+                if (Array.isArray(json)) return json;
+                if (json.data) return json.data;
+                return [];
+            }
         },
         dom: 'Bfrtip',
         buttons: [
@@ -27,16 +30,22 @@ $(document).ready(function () {
         columns: [
             { data: 'item_id' },
             {
-                data: null,
+                data: 'image',
                 render: function (data, type, row) {
-                    return `<img src="${url}${data.image}" width="50" height="60">`;
+                    if (data) {
+                        return `<img src="${url}${data}" width="50" height="60">`;
+                    } else {
+                        return '';
+                    }
                 }
             },
-
+            { data: 'name' },
             { data: 'description' },
+            { data: 'category' },
             { data: 'cost_price' },
             { data: 'sell_price' },
-            { data: 'quantity' },
+            { data: 'show_item' },
+            { data: 'quantity', defaultContent: '' },
             {
                 data: null,
                 render: function (data, type, row) {
