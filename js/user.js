@@ -1,11 +1,5 @@
-console.log('user.js loaded!');
-
 $(document).ready(function () {
-    console.log('Document ready, setting up event handlers');
     const url = 'http://localhost:4000/'
-
-    // Check if form exists
-    console.log('registerForm exists:', $('#registerForm').length > 0);
 
     // const getToken = () => {
     //     const userId = sessionStorage.getItem('userId');
@@ -22,92 +16,34 @@ $(document).ready(function () {
     //     }
     //     return true
     // }
-
-    // Use form submit event for better reliability
-    $('#registerForm').on('submit', function (e) {
-        console.log('Form submit triggered!');
+ 
+    $("#register").on('click', function (e) {
         e.preventDefault();
-        console.log('Default prevented');
-        
-        // Clear any previous error messages
-        $("#registerError").text('');
-        
-        // Debug: Check if elements exist
-        console.log('last_name element exists:', $('#last_name').length > 0);
-        console.log('first_name element exists:', $('#first_name').length > 0);
-        console.log('email element exists:', $('#email').length > 0);
-        console.log('password element exists:', $('#password').length > 0);
-        
-        let last_name = $("#last_name").val().trim();
-        let first_name = $("#first_name").val().trim();
-        let email = $("#email").val().trim();
-        let password = $("#password").val().trim();
-        
-        // Debug: Log raw values before trim
-        console.log('last_name raw:', $("#last_name").val());
-        console.log('first_name raw:', $("#first_name").val());
-        console.log('email raw:', $("#email").val());
-        console.log('password raw:', $("#password").val());
-        
-        // // Validate all fields are filled
-        // if (!last_name || !first_name || !email || !password) {
-        //     $("#registerError").text('All fields are required');
-        //     return;
-        // }
-        
-        let user = {
-            last_name: last_name,
-            first_name: first_name,
-            email: email,
-            password: password
-        };
-        
-        console.log('Register user payload:', user);
-        console.log('JSON stringified:', JSON.stringify(user));
-        
-        // Log each field individually
-        console.log('last_name:', last_name, 'length:', last_name.length);
-        console.log('first_name:', first_name, 'length:', first_name.length);
-        console.log('email:', email, 'length:', email.length);
-        console.log('password:', password, 'length:', password.length);
-        
+        const last_name  = $('#last_name').val();
+        const first_name = $('#first_name').val();
+        const email      = $('#email').val();
+        const password   = $('#password').val();
+
+        const user = { last_name, first_name, email, password };
+
         $.ajax({
-            type: "POST",
+            method: "POST",
             url: `${url}api/v1/register`,
             data: JSON.stringify(user),
-            contentType: 'application/json',
+            processData: false,
+            contentType: 'application/json; charset=utf-8',
             dataType: "json",
             success: function (data) {
-                console.log('Registration success:', data);
+                console.log(data);
                 Swal.fire({
                     icon: "success",
-                    text: "Registration successful!",
+                    text: "register success",
                     position: 'bottom-right'
+
                 });
-                // Clear form
-                $('#registerForm')[0].reset();
             },
-            error: function (xhr, status, error) {
-                console.log('AJAX error:', xhr);
-                let msg = "Registration failed";
-                
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    msg = xhr.responseJSON.error;
-                } else if (xhr.responseText) {
-                    try {
-                        const errorData = JSON.parse(xhr.responseText);
-                        msg = errorData.error || msg;
-                    } catch (e) {
-                        msg = xhr.responseText;
-                    }
-                }
-                
-                $("#registerError").text(msg);
-                Swal.fire({
-                    icon: "error",
-                    text: msg,
-                    position: 'bottom-right'
-                });
+            error: function (error) {
+                console.log(error);
             }
         });
     });
