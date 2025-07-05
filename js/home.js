@@ -1,4 +1,5 @@
 $(document).ready(function () {
+    // Removed header load, now header is directly in home.html
     const url = 'http://localhost:4000/'
     // Fetch all items and display as cards
     $.ajax({
@@ -31,7 +32,7 @@ $(document).ready(function () {
                 });
                 html += '</div>';
             }
-            $('#items').html(html);
+            $('#itemCards').html(html);
         },
         error: function (err) {
             $('#items').html('<div class="alert alert-danger">Failed to load items.</div>');

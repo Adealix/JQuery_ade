@@ -28,7 +28,7 @@ $(document).ready(function () {
 
         $.ajax({
             method: "POST",
-            url: `${url}api/v1/register`,
+            url: `${url}api/v1/users/register`,
             data: JSON.stringify(user),
             processData: false,
             contentType: 'application/json; charset=utf-8',
@@ -36,9 +36,14 @@ $(document).ready(function () {
             success: function (data) {
                 console.log(data);
                 Swal.fire({
-                    icon: "success",
-                    text: "register success",
-                    position: "center"
+                    icon: 'success',
+                    title: 'Registration successful!',
+                    text: 'You can now log in.',
+                    confirmButtonText: 'OK'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = 'login.html';
+                    }
                 });
             },
             error: function (error) {
@@ -58,7 +63,7 @@ $(document).ready(function () {
         }
         $.ajax({
             method: "POST",
-            url: `${url}api/v1/login`,
+            url: `${url}api/v1/users/login`,
             data: JSON.stringify(user),
             processData: false,
             contentType: 'application/json; charset=utf-8',
@@ -118,7 +123,7 @@ $(document).ready(function () {
 
         $.ajax({
             method: "POST",
-            url: `${url}api/v1/update-profile`,
+            url: `${url}api/v1/users/update-profile`,
             data: formData,
             contentType: false,
             processData: false,
@@ -140,7 +145,7 @@ $(document).ready(function () {
         });
     });
 
-    $('#loginBody').load("header.html");
+    // $('#loginBody').load("header.html");
 
 
     $("#profile").load("header.html", function () {
@@ -153,6 +158,8 @@ $(document).ready(function () {
                 sessionStorage.clear();
                 window.location.href = 'login.html';
             });
+            // Hide Register menu (fix: use .parent() for <li> or .closest('.nav-item'))
+            $('a.nav-link[href="register.html"]').parent().hide();
         }
     });
 
@@ -191,7 +198,7 @@ $(document).ready(function () {
     const userId = JSON.parse(sessionStorage.getItem('userId'));
     if (userId) {
         $.ajax({
-            url: `${url}api/v1/customer-by-userid/${userId}`,
+            url: `${url}api/v1/users/customer-by-userid/${userId}`,
             method: 'GET',
             dataType: 'json',
             success: function(res) {

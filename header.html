@@ -1,31 +1,69 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-  <a class="navbar-brand" href="#">MyShop</a>
-  <button
-    class="navbar-toggler"
-    type="button"
-    data-toggle="collapse"
-    data-target="#navbarNav"
-    aria-controls="navbarNav"
-    aria-expanded="false"
-    aria-label="Toggle navigation"
-  >
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse" id="navbarNav">
-    <ul class="navbar-nav ml-auto">
-      <li class="nav-item active">
-        <a class="nav-link" href="home.html">Home</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="profile.html">Profile</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="register.html">Register</a>
-      </li>
-      <li class="nav-item" id="log">
-        <a class="nav-link" href="login.html">Login</a>
-      </li>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyShop</title>
+    <!-- Add your CSS and JS links here -->
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+      <a class="navbar-brand" href="#">MyShop</a>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-toggle="collapse"
+        data-target="#navbarNav"
+        aria-controls="navbarNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item home">
+            <a class="nav-link" href="home.html">Home</a>
+          </li>
+          <li class="nav-item profile">
+            <a class="nav-link" href="profile.html">Profile</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="register.html">Register</a>
+          </li>
+          <li class="nav-item" id="log">
+            <a class="nav-link" href="login.html">Login</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
 
-    </ul>
-  </div>
-</nav>
+    <!-- Add your page content here -->
+
+    <!-- jQuery and Bootstrap JS (if not already included) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+      $(function() {
+        // Only run this logic if header is loaded as a partial (not as a full page)
+        if (window.location.pathname.endsWith('header.html')) return;
+        if (sessionStorage.getItem('userId')) {
+          // Change Login to Logout
+          const $loginLink = $('a.nav-link[href="login.html"]');
+          $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+            e.preventDefault();
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+          });
+          // Hide Register menu
+          $('a.nav-link[href="register.html"]').parent().hide();
+        } else {
+          // Show Register and Login if not logged in
+          $('a.nav-link[href="register.html"]').parent().show();
+          const $loginLink = $('a.nav-link[href="login.html"]');
+          $loginLink.text('Login').attr({ 'href': 'login.html', 'id': '' });
+        }
+      });
+    </script>
+</body>
+</html>

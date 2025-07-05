@@ -45,11 +45,28 @@
     <script type="text/javascript" src="js/home.js"></script>
     <title>Home</title>
   </head>
-  <body >
-    <div id="home"></div>
+  <body>
+    <div id="header"></div>
+    <script>
+      $(function() {
+        $('#header').load('header.html', function() {
+          if (sessionStorage.getItem('userId')) {
+            // Change Login to Logout
+            const $loginLink = $('a.nav-link[href="login.html"]');
+            $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+              e.preventDefault();
+              sessionStorage.clear();
+              window.location.href = 'login.html';
+            });
+            // Hide Register menu
+            $('a.nav-link[href="register.html"]').closest('.nav-item').hide();
+          }
+        });
+      });
+    </script>
     <div class="container" id="items">
       <h1 class="mb-4">Shop Products</h1>
-      <!-- Items will be rendered here as cards by home.js -->
+      <div id="itemCards"></div>
     </div>
   </body>
 </html>

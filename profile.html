@@ -45,7 +45,22 @@
     <script src="js/user.js"></script>
     <title>Profile</title>
   </head>
-  <body >
+  <body>
+    <!-- <div id="header"></div> -->
+    <script>
+      $("#header").load("header.html");
+          if (sessionStorage.getItem('userId')) {
+            // Change Login to Logout
+            const $loginLink = $('a.nav-link[href="login.html"]');
+            $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+              e.preventDefault();
+              sessionStorage.clear();
+              window.location.href = 'login.html';
+            });
+            // Hide Register menu
+            $('a.nav-link[href="register.html"]').closest('.nav-item').hide();
+          }
+    </script>
     <div id="profile"></div>
     <div class="container">
       <h1>User Profile</h1>
