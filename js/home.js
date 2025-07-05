@@ -1,11 +1,13 @@
 $(document).ready(function () {
     // Removed header load, now header is directly in home.html
     const url = 'http://localhost:4000/'
+    const jwtToken = sessionStorage.getItem('jwtToken');
     // Fetch all items and display as cards
     $.ajax({
         url: `${url}api/v1/items`,
         method: 'GET',
         dataType: 'json',
+        headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
         success: function (res) {
             let items = res.items || res.rows || res.data || [];
             if (!Array.isArray(items)) items = [];
@@ -63,7 +65,18 @@ $(document).ready(function () {
             $('#itemCards').html(html);
         },
         error: function (err) {
-            $('#items').html('<div class="alert alert-danger">Failed to load items.</div>');
+            let msg = err.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : 'Failed to load items.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: msg
+            }).then(() => {
+                if (err.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                }
+            });
+            $('#items').html('<div class="alert alert-danger">' + msg + '</div>');
         }
     });
 });

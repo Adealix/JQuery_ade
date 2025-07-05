@@ -25,6 +25,9 @@
           <li class="nav-item home">
             <a class="nav-link" href="home.html">Home</a>
           </li>
+          <li class="nav-item" id="items-nav" style="display:none;">
+            <a class="nav-link" href="item.html">Items</a>
+          </li>
           <li class="nav-item profile">
             <a class="nav-link" href="profile.html">Profile</a>
           </li>
@@ -41,12 +44,28 @@
     <!-- Add your page content here -->
 
     <!-- jQuery and Bootstrap JS (if not already included) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
     <script>
       $(function() {
         // Only run this logic if header is loaded as a partial (not as a full page)
         if (window.location.pathname.endsWith('header.html')) return;
+        // Show/hide Items nav based on JWT and admin role
+        var jwtToken = sessionStorage.getItem('jwtToken');
+        if (jwtToken) {
+          try {
+            var payload = JSON.parse(atob(jwtToken.split('.')[1]));
+            if (payload.role && payload.role === 'admin') {
+              $('#items-nav').show();
+            } else {
+              $('#items-nav').hide();
+            }
+          } catch (e) {
+            $('#items-nav').hide();
+          }
+        } else {
+          $('#items-nav').hide();
+        }
         if (sessionStorage.getItem('userId')) {
           // Change Login to Logout
           const $loginLink = $('a.nav-link[href="login.html"]');

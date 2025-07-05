@@ -1,9 +1,38 @@
 $(document).ready(function () {
     const url = 'http://localhost:4000/'
 
+    // Only declare jwtToken once at the top
+    var jwtToken = sessionStorage.getItem('jwtToken');
+    // Check for admin role on page load
+    let isAdmin = false;
+    if (jwtToken) {
+        try {
+            // Decode JWT payload (middle part)
+            const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+            if (payload.role && payload.role === 'admin') {
+                isAdmin = true;
+            }
+        } catch (e) {
+            // Invalid token, treat as not admin
+            isAdmin = false;
+        }
+    }
+    if (!isAdmin) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Access Denied',
+            text: 'Only authorized admin can access this page.',
+            confirmButtonText: 'Go to Home',
+            allowOutsideClick: false
+        }).then(() => {
+            window.location.href = 'home.html';
+        });
+        return;
+    }
+
     var table = $('#itable').DataTable({
         ajax: {
-            url: `${url}api/v1/items`,
+            url: `${url}api/v1/items?all=true`, // Admin: fetch all items
             dataSrc: function(json) {
                 // Backend returns {success: true, items: [...]} for all items
                 if (json.success && Array.isArray(json.items)) return json.items;
@@ -14,12 +43,19 @@ $(document).ready(function () {
             },
             error: function(xhr, error, thrown) {
                 console.error('DataTable AJAX error:', error, thrown, xhr.responseText);
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
                 Swal.fire({
                   icon: 'error',
                   title: 'Failed to load items',
-                  text: xhr.responseText || error
+                  text: msg
+                }).then(() => {
+                  if (xhr.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                  }
                 });
-            }
+            },
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
         },
         dom: 'Bfrtip',
         buttons: [
@@ -163,6 +199,7 @@ $(document).ready(function () {
             contentType: false,
             processData: false,
             dataType: "json",
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
                 $("#itemModal").modal("hide");
                 Swal.fire({
@@ -173,8 +210,18 @@ $(document).ready(function () {
                 var $itable = $('#itable').DataTable();
                 $itable.ajax.reload()
             },
-            error: function (error) {
-                console.log(error);
+            error: function (xhr) {
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Create failed');
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Failed to create item',
+                  text: msg
+                }).then(() => {
+                  if (xhr.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                  }
+                });
             }
         });
     });
@@ -196,6 +243,7 @@ $(document).ready(function () {
             method: "GET",
             url: `${url}api/v1/items/${id}`,
             dataType: "json",
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
                 // Backend returns {success: true, item: {...}}
                 if (data.success && data.item) {
@@ -212,8 +260,18 @@ $(document).ready(function () {
                     }
                 }
             },
-            error: function (error) {
-                console.log(error);
+            error: function (xhr) {
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Failed to fetch item data');
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Failed to fetch item',
+                  text: msg
+                }).then(() => {
+                  if (xhr.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                  }
+                });
             }
         });
     });
@@ -249,6 +307,7 @@ $(document).ready(function () {
             contentType: false,
             processData: false,
             dataType: "json",
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
                 $('#itemModal').modal("hide");
                 Swal.fire({
@@ -258,8 +317,18 @@ $(document).ready(function () {
                 });
                 table.ajax.reload()
             },
-            error: function (error) {
-                console.log(error);
+            error: function (xhr) {
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Update failed');
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Failed to update item',
+                  text: msg
+                }).then(() => {
+                  if (xhr.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                  }
+                });
             }
         });
     });
@@ -287,14 +356,25 @@ $(document).ready(function () {
                         method: "DELETE",
                         url: `${url}api/v1/items/${id}`,
                         dataType: "json",
+                        headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
                         success: function (data) {
                             $row.fadeOut(400, function () {
                                 table.row($row).remove().draw();
                             });
                             bootbox.alert(data.message);
                         },
-                        error: function (error) {
-                            bootbox.alert(error.responseJSON && error.responseJSON.error ? error.responseJSON.error : 'Delete failed');
+                        error: function (xhr) {
+                            let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
+                            Swal.fire({
+                              icon: 'error',
+                              title: 'Failed to delete item',
+                              text: msg
+                            }).then(() => {
+                              if (xhr.status === 401) {
+                                sessionStorage.clear();
+                                window.location.href = 'login.html';
+                              }
+                            });
                         }
                     });
                 }

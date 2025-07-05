@@ -29,14 +29,6 @@
 
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/datatables.net-buttons-bs5/2.3.6/buttons.bootstrap5.min.css"
-      integrity="sha512-vWTrt2A9iAn2pK8hNZS26YZRDDUvLiOfyL+MmBEXJizrigtxnpLuLrLOOMm+pcrUJFzGssUwoS6Gofp+TT2deQ=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    
-    <link
-      rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css"
       integrity="sha512-fjO3Vy3QodX9c6G9AUmr6WuIaEPdGRxBjD7gjatG5gGylzYyrEq3U0q+smkG6CwIY0L8XALRFHh4KPHig0Q1ug=="
       crossorigin="anonymous"
@@ -103,6 +95,28 @@
   </head>
 
   <body>
+    <div id="header"></div>
+    <script>
+      $("#header").load("header.html", function() {
+  if (!sessionStorage.getItem('userId')) {
+    // Hide Profile menu if not logged in
+    $('a.nav-link[href="profile.html"]').closest('.nav-item').hide();
+    // Show Register and Login
+    $('a.nav-link[href="register.html"]').closest('.nav-item').show();
+    $('a.nav-link[href="login.html"]').closest('.nav-item').show();
+  } else {
+    // If logged in, show Profile, hide Register, change Login to Logout
+    $('a.nav-link[href="profile.html"]').closest('.nav-item').show();
+    $('a.nav-link[href="register.html"]').closest('.nav-item').hide();
+    const $loginLink = $('a.nav-link[href="login.html"]');
+    $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+      e.preventDefault();
+      sessionStorage.clear();
+      window.location.href = 'login.html';
+    });
+  }
+});
+    </script>
     <div id="home"></div>
     <div id="items" class="container">
       <button
