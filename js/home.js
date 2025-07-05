@@ -15,10 +15,38 @@ $(document).ready(function () {
             } else {
                 html = '<div class="row">';
                 items.forEach(function (item) {
+                    // If item.images is an array, show all images as a carousel, else fallback to image_path
+                    let imagesHtml = '';
+                    if (Array.isArray(item.images) && item.images.length > 0) {
+                        let carouselId = 'carousel-' + item.item_id;
+                        imagesHtml = `<div id='${carouselId}' class='carousel slide mb-2' data-ride='carousel'>`;
+                        imagesHtml += `<div class='carousel-inner'>`;
+                        item.images.forEach(function(img, idx) {
+                            imagesHtml += `<div class='carousel-item${idx===0?' active':''}'>` +
+                                `<img src='${url}${img}' class='d-block w-100' style='height:200px;object-fit:cover;' alt='${item.name} image ${idx+1}'>` +
+                                `</div>`;
+                        });
+                        imagesHtml += `</div>`;
+                        if (item.images.length > 1) {
+                            imagesHtml += `
+                                <a class='carousel-control-prev' href='#${carouselId}' role='button' data-slide='prev'>
+                                    <span class='carousel-control-prev-icon' aria-hidden='true'></span>
+                                    <span class='sr-only'>Previous</span>
+                                </a>
+                                <a class='carousel-control-next' href='#${carouselId}' role='button' data-slide='next'>
+                                    <span class='carousel-control-next-icon' aria-hidden='true'></span>
+                                    <span class='sr-only'>Next</span>
+                                </a>
+                            `;
+                        }
+                        imagesHtml += `</div>`;
+                    } else if (item.image_path) {
+                        imagesHtml = `<img src="${url}${item.image_path}" class="card-img-top" alt="${item.name}">`;
+                    }
                     html += `
                     <div class="col-md-4 mb-4">
                         <div class="card h-100">
-                            ${item.image_path ? `<img src="${url}${item.image_path}" class="card-img-top" alt="${item.name}">` : ''}
+                            ${imagesHtml}
                             <div class="card-body">
                                 <h5 class="card-title">${item.name}</h5>
                                 <p class="card-text">${item.description}</p>

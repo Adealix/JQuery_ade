@@ -71,6 +71,14 @@ $(document).ready(function () {
             success: function (data) {
                 console.log(data);
                 console.log('LOGIN RESPONSE:', data.user);
+                // Show the JWT token in an alert (for debugging)
+                if (data.token) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'JWT Token',
+                        html: `<textarea style='width:100%;height:80px'>${data.token}</textarea>`
+                    });
+                }
                 Swal.fire({
                     text: data.success,
                     showConfirmButton: false,
@@ -81,6 +89,8 @@ $(document).ready(function () {
                 });
                 sessionStorage.setItem('userId', JSON.stringify(data.user.id))
                 sessionStorage.setItem('userEmail', data.user.email)
+                // Optionally store the token for later use
+                if (data.token) sessionStorage.setItem('jwtToken', data.token)
                 window.location.href = 'profile.html'
             },
             error: function (error) {
@@ -114,6 +124,7 @@ $(document).ready(function () {
     $("#updateBtn").on('click', function (event) {
         event.preventDefault();
         let userId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId')
+        let jwtToken = sessionStorage.getItem('jwtToken');
 
         var data = $('#profileForm')[0];
         console.log(data);
@@ -128,6 +139,7 @@ $(document).ready(function () {
             contentType: false,
             processData: false,
             dataType: "json",
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
                 console.log(data);
                 Swal.fire({
@@ -136,11 +148,27 @@ $(document).ready(function () {
                     timer: 1000,
                     timerProgressBar: true,
                     position: "center"
-
                 });
             },
             error: function (error) {
                 console.log(error);
+                let msg = 'An error occurred.';
+                if (error.status === 401) {
+                    msg = '401 Unauthorized: You are not authorized. Please log in again.';
+                } else if (error.responseJSON && error.responseJSON.error) {
+                    msg = error.responseJSON.error;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Update Failed',
+                    text: msg,
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    if (error.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                    }
+                });
             }
         });
     });
@@ -196,11 +224,15 @@ $(document).ready(function () {
 
     // Autofill profile form if user is logged in
     const userId = JSON.parse(sessionStorage.getItem('userId'));
-    if (userId) {
+    const jwtToken = sessionStorage.getItem('jwtToken');
+    if (userId && jwtToken) {
         $.ajax({
             url: `${url}api/v1/users/customer-by-userid/${userId}`,
             method: 'GET',
             dataType: 'json',
+            headers: {
+                'Authorization': 'Bearer ' + jwtToken
+            },
             success: function(res) {
                 if (res.success && res.customer) {
                     $('#title').val(res.customer.title || '');
@@ -214,6 +246,17 @@ $(document).ready(function () {
                         $('#avatarPreview').attr('src', res.customer.image_path);
                     }
                 }
+            },
+            error: function(err) {
+                console.log('Auth error or failed to fetch profile:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Authorization Error',
+                    text: 'You are not authorized. Please log in again.'
+                }).then(() => {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                });
             }
         });
     }
