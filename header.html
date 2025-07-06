@@ -34,16 +34,19 @@
           <li class="nav-item profile">
             <a class="nav-link" href="profile.html">Profile</a>
           </li>
+          <li class="nav-item" id="myorders-nav" style="display:none;">
+            <a class="nav-link" href="myorders.html">My Orders</a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="register.html">Register</a>
-          </li>
-          <li class="nav-item" id="log">
-            <a class="nav-link" href="login.html">Login</a>
           </li>
           <li class="nav-item" id="cart-nav">
             <a class="nav-link" href="cart.html">
               <i class="fas fa-shopping-cart"></i> Cart
             </a>
+          </li>
+          <li class="nav-item" id="log">
+            <a class="nav-link" href="login.html">Login</a>
           </li>
         </ul>
       </div>
@@ -90,6 +93,8 @@
           $('a.nav-link[href="register.html"]').parent().hide();
           // Show Cart
           $('#cart-nav').show();
+          // Show My Orders
+          $('#myorders-nav').show();
         } else {
           // Show Register and Login if not logged in
           $('a.nav-link[href="register.html"]').parent().show();
@@ -97,6 +102,8 @@
           $loginLink.text('Login').attr({ 'href': 'login.html', 'id': '' });
           // Hide Cart
           $('#cart-nav').hide();
+          // Hide My Orders
+          $('#myorders-nav').hide();
         }
       });
     </script>

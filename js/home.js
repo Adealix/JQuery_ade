@@ -143,8 +143,10 @@ $(document).ready(function () {
             item_id: $btn.data('id'),
             name: $btn.data('name'),
             price: parseFloat($btn.data('price')),
+            sell_price: parseFloat($btn.data('price')),
             image: $btn.data('image'),
             description: $card.find('.card-text').first().text(),
+            category: $card.find('.card-text strong:contains("Category:")').parent().text().replace('Category:', '').trim(),
             quantity: qty
         };
         if (typeof window.addToCart === 'function') {

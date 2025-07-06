@@ -14,6 +14,7 @@ $(document).ready(function () {
         let cart = getCart();
         let html = '';
         let total = 0;
+        const shipping = 50.00;
         if (cart.length === 0) {
             html = '<p>Your cart is empty.</p>';
         } else {
@@ -21,28 +22,55 @@ $(document).ready(function () {
                 <thead>
                     <tr>
                         <th>Image</th>
+                        <th>Name</th>
                         <th>Description</th>
+                        <th>Category</th>
                         <th>Price</th>
                         <th>Qty</th>
-                        <th>Subtotal</th>
+                        <th>Total Price</th>
                         <th>Remove</th>
                     </tr>
                 </thead>
                 <tbody>`;
             cart.forEach((item, idx) => {
-                let subtotal = item.price * item.quantity;
+                let price = item.sell_price !== undefined ? item.sell_price : item.price;
+                let subtotal = price * item.quantity;
                 total += subtotal;
                 html += `<tr>
                     <td><img src="${item.image}" width="60"></td>
-                    <td>${item.description}</td>
-                    <td>₱ ${item.price.toFixed(2)}</td>
-                    <td>${item.quantity}</td>
+                    <td>${item.name || ''}</td>
+                    <td>${item.description || ''}</td>
+                    <td>${item.category || ''}</td>
+                    <td>₱ ${(price).toFixed(2)}</td>
+                    <td>
+                        <div class="input-group input-group-sm" style="max-width: 110px;">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-secondary btn-cart-qty-down" type="button" data-idx="${idx}">&#8595;</button>
+                            </div>
+                            <input type="number" class="form-control cart-qty-input no-spinner" min="1" value="${item.quantity}" data-idx="${idx}" style="text-align:center;" />
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary btn-cart-qty-up" type="button" data-idx="${idx}">&#8593;</button>
+                            </div>
+                        </div>
+                    </td>
                     <td>₱ ${(subtotal).toFixed(2)}</td>
                     <td><button class="btn btn-danger btn-sm remove-item" data-idx="${idx}">&times;</button></td>
                 </tr>`;
             });
             html += `</tbody></table>
-                <h4>Total: ₱ ${total.toFixed(2)}</h4>`;
+                <h5 class="text-right">Total (Items Only): ₱ ${total.toFixed(2)}</h5>
+                <h5 class="text-right">Shipping Fee: ₱ ${shipping.toFixed(2)}</h5>
+                <h4 class="text-right">Grand Total: ₱ ${(total + shipping).toFixed(2)}</h4>
+                <style>
+                  input.cart-qty-input.no-spinner::-webkit-outer-spin-button,
+                  input.cart-qty-input.no-spinner::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                  }
+                  input.cart-qty-input.no-spinner[type=number] {
+                    -moz-appearance: textfield;
+                  }
+                </style>`;
         }
         $('#cartTable').html(html);
     }
@@ -143,6 +171,38 @@ $(document).ready(function () {
                 });
             }
         });
+    });
+
+    // Quantity up/down and input change handlers for cart
+    $('#cartTable').off('click', '.btn-cart-qty-up').on('click', '.btn-cart-qty-up', function() {
+        let idx = $(this).data('idx');
+        let cart = getCart();
+        let max = 99; // Optionally set a max stock limit
+        if (cart[idx].quantity < max) {
+            cart[idx].quantity++;
+            saveCart(cart);
+            renderCart();
+        }
+    });
+    $('#cartTable').off('click', '.btn-cart-qty-down').on('click', '.btn-cart-qty-down', function() {
+        let idx = $(this).data('idx');
+        let cart = getCart();
+        let min = 1;
+        if (cart[idx].quantity > min) {
+            cart[idx].quantity--;
+            saveCart(cart);
+            renderCart();
+        }
+    });
+    $('#cartTable').off('input', '.cart-qty-input').on('input', '.cart-qty-input', function() {
+        let idx = $(this).data('idx');
+        let cart = getCart();
+        let min = 1;
+        let val = parseInt($(this).val()) || min;
+        if (val < min) val = min;
+        cart[idx].quantity = val;
+        saveCart(cart);
+        renderCart();
     });
 
     renderCart();
