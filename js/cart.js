@@ -1,5 +1,6 @@
 $(document).ready(function () {
     const url = 'http://localhost:4000/'
+    // Use localStorage for persistent cart, or switch to sessionStorage for session-only cart
     function getCart() {
         let cart = localStorage.getItem('cart');
         return cart ? JSON.parse(cart) : [];
@@ -43,31 +44,26 @@ $(document).ready(function () {
             html += `</tbody></table>
                 <h4>Total: ₱ ${total.toFixed(2)}</h4>`;
         }
-
         $('#cartTable').html(html);
     }
 
-    function getUserId() {
-        let userId = sessionStorage.getItem('userId');
-
-        return userId ?? '';
+    // Add to cart logic (should be called from product/item page)
+    window.addToCart = function(item) {
+        let cart = getCart();
+        // Check if item already exists in cart
+        let idx = cart.findIndex(i => i.item_id === item.item_id);
+        if (idx > -1) {
+            cart[idx].quantity += item.quantity;
+        } else {
+            cart.push(item);
+        }
+        saveCart(cart);
+        renderCart();
+        Swal.fire({
+            icon: 'success',
+            text: 'Item added to cart!'
+        });
     }
-
-    // const getToken = () => {
-    //     const token = sessionStorage.getItem('token');
-
-    //     if (!token) {
-    //         Swal.fire({
-    //             icon: 'warning',
-    //             text: 'You must be logged in to access this page.',
-    //             showConfirmButton: true
-    //         }).then(() => {
-    //             window.location.href = 'login.html';
-    //         });
-    //         return;
-    //     }
-    //     return JSON.parse(token)
-    // }
 
     $('#cartTable').on('click', '.remove-item', function () {
         let idx = $(this).data('idx');
@@ -79,51 +75,75 @@ $(document).ready(function () {
 
     $('#header').load("header.html");
 
+    function getUserId() {
+        let userId = sessionStorage.getItem('userId');
+        return userId ? JSON.parse(userId) : '';
+    }
+    function getJwtToken() {
+        return sessionStorage.getItem('jwtToken') || '';
+    }
+
     $('#checkoutBtn').on('click', function () {
-
-        itemCount = 0;
-        priceTotal = 0;
-        let cart = getCart()
-    
-
-        
-
+        let cart = getCart();
+        if (!getUserId()) {
+            Swal.fire({
+                icon: 'warning',
+                text: 'You must be logged in to checkout.',
+                showConfirmButton: true
+            }).then(() => {
+                window.location.href = 'login.html';
+            });
+            return;
+        }
+        if (cart.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                text: 'Your cart is empty.'
+            });
+            return;
+        }
         const payload = JSON.stringify({
-            userId: getUserId(),
+            user: { id: getUserId() },
             cart
         });
-        console.log(payload)
-        if (getUserId()) {
-            $.ajax({
-                type: "POST",
-                url: `${url}api/v1/create-order`,
-                data: payload,
-                dataType: "json",
-                processData: false,
-                contentType: 'application/json; charset=utf-8',
-                // headers: {
-                //     "Authorization": "Bearer " + getToken()
-                // },
-                success: function (data) {
-                    console.log(data);
-                    // alert(data.status);
-                    Swal.fire({
-                        icon: "success",
-                        text: data.message,
-                    });
-                    localStorage.removeItem('cart')
-                    renderCart();
-                },
-                error: function (error) {
-                    console.log(error);
+        $.ajax({
+            type: "POST",
+            url: `${url}api/v1/create-order`,
+            data: payload,
+            dataType: "json",
+            processData: false,
+            contentType: 'application/json; charset=utf-8',
+            headers: getJwtToken() ? { 'Authorization': 'Bearer ' + getJwtToken() } : {},
+            success: function (data) {
+                Swal.fire({
+                    icon: "success",
+                    text: data.message,
+                });
+                localStorage.removeItem('cart');
+                renderCart();
+            },
+            error: function (error) {
+                let msg = 'An error occurred.';
+                if (error.status === 401) {
+                    msg = '401 Unauthorized: Please log in again.';
+                } else if (error.status === 403) {
+                    msg = '403 Forbidden: You are not allowed to perform this action.';
+                } else if (error.responseJSON && error.responseJSON.message) {
+                    msg = error.responseJSON.message;
                 }
-            });
-
-        }
-
-
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Checkout Failed',
+                    text: msg
+                }).then(() => {
+                    if (error.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
+        });
     });
 
-    renderCart()
-
-})
+    renderCart();
+});

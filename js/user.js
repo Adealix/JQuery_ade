@@ -95,14 +95,22 @@ $(document).ready(function () {
             },
             error: function (error) {
                 console.log(error);
+                let msg = 'An error occurred.';
+                let icon = 'error';
+                if (error.status === 401) {
+                    msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Invalid email or password.';
+                } else if (error.status === 403) {
+                    msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Your account is not active. Please contact an Administrator.';
+                    icon = 'warning';
+                } else if (error.responseJSON && error.responseJSON.message) {
+                    msg = error.responseJSON.message;
+                }
                 Swal.fire({
-                    icon: "error",
-                    text: error.responseJSON.message,
-                    showConfirmButton: false,
-                    timer: 1000,
-                    timerProgressBar: true,
+                    icon: icon,
+                    title: 'Login Failed',
+                    text: msg,
+                    showConfirmButton: true,
                     position: "center"
-
                 });
             }
         });
@@ -243,7 +251,9 @@ $(document).ready(function () {
                     $('#zipcode').val(res.customer.zipcode || '');
                     $('#phone').val(res.customer.phone || '');
                     if (res.customer.image_path) {
-                        $('#avatarPreview').attr('src', res.customer.image_path);
+                        $('#avatarPreview').attr('src', url + res.customer.image_path);
+                    } else {
+                        $('#avatarPreview').attr('src', url + 'storage/images/logo1.png');
                     }
                 }
             },
@@ -258,6 +268,181 @@ $(document).ready(function () {
                     window.location.href = 'login.html';
                 });
             }
+        });
+    }
+
+    // Admin DataTable for users/customers (only on users.html)
+    if ($('#utable').length) {
+        // Use the already-declared jwtToken variable at the top
+        let isAdmin = false;
+        if (jwtToken) {
+            try {
+                const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+                if (payload.role && payload.role === 'admin') {
+                    isAdmin = true;
+                }
+            } catch (e) {
+                isAdmin = false;
+            }
+        }
+        if (!isAdmin) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Access Denied',
+                text: 'Only authorized admin can access this page.',
+                confirmButtonText: 'Go to Home',
+                allowOutsideClick: false
+            }).then(() => {
+                window.location.href = 'home.html';
+            });
+            return;
+        }
+        var table = $('#utable').DataTable({
+            ajax: {
+                url: `${url}api/v1/users/customers?all=true`,
+                dataSrc: 'users',
+                error: function(xhr, error, thrown) {
+                    let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Failed to load users',
+                      text: msg
+                    }).then(() => {
+                      if (xhr.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                      }
+                    });
+                },
+                headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'pdf',
+                'excel'
+            ],
+            columns: [
+                {
+                    data: 'image_path',
+                    render: function (data) {
+                        if (data) {
+                            return `<img src='${url}${data}' style='width:50px;height:50px;object-fit:cover;border-radius:50%;' />`;
+                        } else {
+                            return '';
+                        }
+                    }
+                },
+                { data: 'email' },
+                { data: 'last_name' },
+                { data: 'first_name' },
+                { data: 'status' },
+                { data: 'role' },
+                {
+                    data: null,
+                    render: function (data, type, row) {
+                        return `<a href='#' class='editBtn' data-id='${row.user_id}'><i class='fas fa-edit' style='font-size:24px'></i></a> <a href='#' class='deleteBtn' data-id='${row.user_id}'><i class='fas fa-trash-alt' style='font-size:24px;color:red'></i></a>`;
+                    }
+                }
+            ]
+        });
+
+        // Edit button handler
+        $('#utable tbody').on('click', 'a.editBtn', function (e) {
+            e.preventDefault();
+            var data = table.row($(this).parents('tr')).data();
+            $('#user_id').val(data.user_id);
+            $('#status').val(data.status);
+            $('#role').val(data.role);
+            // Commented out: populate other fields for future use
+            // $('#customer_id').val(data.customer_id);
+            // $('#email').val(data.email);
+            // $('#last_name').val(data.last_name);
+            // $('#first_name').val(data.first_name);
+            // $('#address').val(data.address);
+            // if (data.image_path) {
+            //     $('#imagePreview').attr('src', url + data.image_path).show();
+            // } else {
+            //     $('#imagePreview').hide();
+            // }
+            $('#userModal').modal('show');
+        });
+
+        // Update user/customer (status and role only)
+        $('#userUpdate').on('click', function (e) {
+            e.preventDefault();
+            let userId = $('#user_id').val();
+            let status = $('#status').val();
+            let role = $('#role').val();
+            $.ajax({
+                method: 'POST',
+                url: `${url}api/v1/users/customers/${userId}/status-role`,
+                data: JSON.stringify({ status, role }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+                success: function (data) {
+                    $('#userModal').modal('hide');
+                    Swal.fire({
+                      icon: 'success',
+                      title: 'Success',
+                      text: 'User updated successfully!'
+                    });
+                    table.ajax.reload();
+                },
+                error: function (xhr) {
+                    let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Update failed');
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Failed to update user',
+                      text: msg
+                    }).then(() => {
+                      if (xhr.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                      }
+                    });
+                }
+            });
+        });
+
+        // Delete user/customer
+        $('#utable tbody').on('click', 'a.deleteBtn', function (e) {
+            e.preventDefault();
+            var userId = $(this).data('id');
+            bootbox.confirm({
+                message: "Do you want to delete this user?",
+                buttons: {
+                    confirm: { label: 'Yes', className: 'btn-success' },
+                    cancel: { label: 'No', className: 'btn-danger' }
+                },
+                callback: function (result) {
+                    if (result) {
+                        $.ajax({
+                            method: 'DELETE',
+                            url: `${url}api/v1/users/customers/${userId}`,
+                            dataType: 'json',
+                            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+                            success: function (data) {
+                                table.ajax.reload();
+                                bootbox.alert(data.message || 'User deleted.');
+                            },
+                            error: function (xhr) {
+                                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
+                                Swal.fire({
+                                  icon: 'error',
+                                  title: 'Failed to delete user',
+                                  text: msg
+                                }).then(() => {
+                                  if (xhr.status === 401) {
+                                    sessionStorage.clear();
+                                    window.location.href = 'login.html';
+                                  }
+                                });
+                            }
+                        });
+                    }
+                }
+            });
         });
     }
 })

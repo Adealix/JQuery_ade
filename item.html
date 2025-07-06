@@ -125,7 +125,7 @@
         data-toggle="modal"
         data-target="#itemModal"
       >
-        add<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+        Add<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
       </button>
       <div class="card-body" style="height: 210px">
         <input type="text" id="itemSearch" placeholder="--search--" />
@@ -154,13 +154,10 @@
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h4 class="modal-title">Create new item</h4>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
+            <h4 class="modal-title" id="itemModalTitle">Create New Item</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
           <div class="modal-body">
             <form id="iform">
@@ -237,12 +234,8 @@
             </form>
           </div>
           <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Close
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size: 1.1rem; font-weight: 500; color: #333; background: none; border: none;">
+              <span aria-hidden="true">Close</span>
             </button>
             <button id="itemSubmit" type="submit" class="btn btn-primary">
               Save

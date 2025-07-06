@@ -69,7 +69,8 @@ $(document).ready(function () {
                     $('#itemModal').modal('show');
                     $('#itemUpdate').hide(); // Always hide Update
                     $('#itemSubmit').show(); // Always show Save
-                    $('#itemImage').remove()
+                    $('#itemImage').remove();
+                    $('#itemModalTitle').text('Create New Item'); // Set modal title for Add
                 }
             }
         ],
@@ -236,8 +237,9 @@ $(document).ready(function () {
         $('#itemModal').modal('show'); // Show the item modal for editing
         // Add a hidden input with the item id to the form
         $('<input>').attr({ type: 'hidden', id: 'itemId', name: 'item_id', value: id }).appendTo('#iform');
-        $('#itemSubmit').hide() // Hide the Add button
-        $('#itemUpdate').show() // Show the Update button
+        $('#itemSubmit').hide(); // Hide the Add button
+        $('#itemUpdate').show(); // Show the Update button
+        $('#itemModalTitle').text('Update Item'); // Set modal title for Edit
         // Fetch the item data from the backend and fill the form
         $.ajax({
             method: "GET",
@@ -381,4 +383,30 @@ $(document).ready(function () {
             }
         });
     })
+
+    // Fix: Set modal title and buttons for Add/Edit Item
+    // Use a global flag to track edit mode
+    let isEditItem = false;
+
+    // When Add button is clicked
+    $(document).on('click', '[data-target="#itemModal"]', function () {
+      isEditItem = false;
+    });
+
+    // When Edit icon is clicked (assuming .editBtn is the class)
+    $(document).on('click', '.editBtn', function () {
+      isEditItem = true;
+    });
+
+    $('#itemModal').on('show.bs.modal', function () {
+      if (isEditItem) {
+        $('#itemModalTitle').text('Update Item');
+        $('#itemSubmit').hide();
+        $('#itemUpdate').show();
+      } else {
+        $('#itemModalTitle').text('Create New Item');
+        $('#itemSubmit').show();
+        $('#itemUpdate').hide();
+      }
+    });
 })
