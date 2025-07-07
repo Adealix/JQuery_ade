@@ -189,10 +189,26 @@ $(document).ready(function () {
         if (sessionStorage.getItem('userId')) {
             // Change Login link to Logout
             const $loginLink = $('a.nav-link[href="login.html"]');
-            $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+            $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).off('click').on('click', function (e) {
                 e.preventDefault();
-                sessionStorage.clear();
-                window.location.href = 'login.html';
+                var jwtToken = sessionStorage.getItem('jwtToken');
+                var userId = sessionStorage.getItem('userId') ? JSON.parse(sessionStorage.getItem('userId')) : null;
+                if (jwtToken && userId) {
+                    $.ajax({
+                        method: 'POST',
+                        url: url + 'api/v1/logout',
+                        contentType: 'application/json; charset=utf-8',
+                        data: JSON.stringify({ userId: userId }),
+                        headers: { 'Authorization': 'Bearer ' + jwtToken },
+                        complete: function () {
+                            sessionStorage.clear();
+                            window.location.href = 'login.html';
+                        }
+                    });
+                } else {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                }
             });
             // Hide Register menu (fix: use .parent() for <li> or .closest('.nav-item'))
             $('a.nav-link[href="register.html"]').parent().hide();

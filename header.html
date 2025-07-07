@@ -31,6 +31,9 @@
           <li class="nav-item" id="users-nav" style="display:none;">
             <a class="nav-link" href="user.html">Users</a>
           </li>
+          <li class="nav-item" id="orders-nav" style="display:none;">
+            <a class="nav-link" href="orders.html">Orders</a>
+          </li>
           <li class="nav-item profile">
             <a class="nav-link" href="profile.html">Profile</a>
           </li>
@@ -69,6 +72,7 @@
             if (payload.role && payload.role === 'admin') {
               $('#items-nav').show();
               $('#users-nav').show();
+              $('#orders-nav').show();
             } else {
               $('#items-nav').hide();
               $('#users-nav').hide();
@@ -84,12 +88,27 @@
         if (sessionStorage.getItem('userId')) {
           // Change Login to Logout
           const $loginLink = $('a.nav-link[href="login.html"]');
-          $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).on('click', function (e) {
+          $loginLink.text('Logout').attr({ 'href': '#', 'id': 'logout-link' }).off('click').on('click', function (e) {
             e.preventDefault();
-            sessionStorage.clear();
-            window.location.href = 'login.html';
+            var jwtToken = sessionStorage.getItem('jwtToken');
+            // Use absolute URL for logout endpoint
+            var logoutUrl = 'http://localhost:4000/api/v1/users/logout';
+            if (jwtToken) {
+              $.ajax({
+                method: 'POST',
+                url: logoutUrl,
+                headers: { 'Authorization': 'Bearer ' + jwtToken },
+                complete: function () {
+                  sessionStorage.clear();
+                  window.location.href = 'login.html';
+                }
+              });
+            } else {
+              sessionStorage.clear();
+              window.location.href = 'login.html';
+            }
           });
-          // Hide Register menu
+          // Hide Register menu (fix: use .parent() for <li> or .closest('.nav-item'))
           $('a.nav-link[href="register.html"]').parent().hide();
           // Show Cart
           $('#cart-nav').show();
