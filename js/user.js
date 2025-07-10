@@ -17,15 +17,190 @@ $(document).ready(function () {
     //     return true
     // }
  
-    $("#register").on('click', function (e) {
+    // Inline error helpers for user forms
+    function clearUserInlineErrors() {
+        $('.invalid-feedback').remove();
+        $('.is-invalid').removeClass('is-invalid');
+    }
+    function showUserInlineError(selector, message) {
+        const $input = $(selector);
+        $input.addClass('is-invalid');
+        if ($input.next('.invalid-feedback').length === 0) {
+            $input.after(`<div class="invalid-feedback" style="display:block;">${message}</div>`);
+        }
+    }
+    function validateRegisterForm() {
+        let valid = true;
+        clearUserInlineErrors();
+        let last_name = $('#last_name').val().trim();
+        let first_name = $('#first_name').val().trim();
+        let email = $('#email').val().trim();
+        let password = $('#password').val();
+        // Last Name (required, min 2 chars, alpha only)
+        if (!last_name) {
+            valid = false;
+            showUserInlineError('#last_name', 'Last name is required.');
+        } else if (last_name.length < 2) {
+            valid = false;
+            showUserInlineError('#last_name', 'Last name must be at least 2 characters.');
+        } else if (!/^[A-Za-z]+$/.test(last_name)) {
+            valid = false;
+            showUserInlineError('#last_name', 'Last name must contain only letters.');
+        }
+        // First Name (required, min 2 chars, alpha only)
+        if (!first_name) {
+            valid = false;
+            showUserInlineError('#first_name', 'First name is required.');
+        } else if (first_name.length < 2) {
+            valid = false;
+            showUserInlineError('#first_name', 'First name must be at least 2 characters.');
+        } else if (!/^[A-Za-z]+$/.test(first_name)) {
+            valid = false;
+            showUserInlineError('#first_name', 'First name must contain only letters.');
+        }
+        // Email (only allow a-z, A-Z, 0-9, @, . and must be in format user@mail.com)
+        if (!email) {
+            valid = false;
+            showUserInlineError('#email', 'Email is required.');
+        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+            valid = false;
+            showUserInlineError('#email', 'Invalid email format. Only letters, numbers, @ and . are allowed.');
+        } else if (/[^a-zA-Z0-9@.]/.test(email.replace(/@|\./g, ''))) {
+            valid = false;
+            showUserInlineError('#email', 'Email must not contain special characters except @ and .');
+        }
+        // Password
+        if (!password) {
+            valid = false;
+            showUserInlineError('#password', 'Password is required.');
+        } else if (password.length < 6) {
+            valid = false;
+            showUserInlineError('#password', 'Password must be at least 6 characters.');
+        }
+        return valid;
+    }
+    // Inline error helpers for profile form (like item.js)
+    function clearProfileInlineErrors() {
+        $('#profileForm .invalid-feedback').remove();
+        $('#profileForm .is-invalid').removeClass('is-invalid');
+    }
+    function showProfileInlineError(selector, message) {
+        const $input = $(selector);
+        $input.addClass('is-invalid');
+        if ($input.next('.invalid-feedback').length === 0) {
+            $input.after(`<div class="invalid-feedback" style="display:block;">${message}</div>`);
+        }
+    }
+    function validateProfileForm() {
+        let valid = true;
+        clearProfileInlineErrors();
+        // Last Name (required, min 2 chars, alpha only)
+        let last_name = $('#last_name').val().trim();
+        if (!last_name) {
+            valid = false;
+            showProfileInlineError('#last_name', 'Last name is required.');
+        } else if (last_name.length < 2) {
+            valid = false;
+            showProfileInlineError('#last_name', 'Last name must be at least 2 characters.');
+        } else if (!/^[A-Za-z]+$/.test(last_name)) {
+            valid = false;
+            showProfileInlineError('#last_name', 'Last name must contain only letters.');
+        }
+        // First Name (required, min 2 chars, alpha only)
+        let first_name = $('#first_name').val().trim();
+        if (!first_name) {
+            valid = false;
+            showProfileInlineError('#first_name', 'First name is required.');
+        } else if (first_name.length < 2) {
+            valid = false;
+            showProfileInlineError('#first_name', 'First name must be at least 2 characters.');
+        } else if (!/^[A-Za-z]+$/.test(first_name)) {
+            valid = false;
+            showProfileInlineError('#first_name', 'First name must contain only letters.');
+        }
+        // Address (required)
+        let address = $('#address').val().trim();
+        if (!address) {
+            valid = false;
+            showProfileInlineError('#address', 'Address is required.');
+        }
+        // City (required, alpha only)
+        let city = $('#city').val().trim();
+        if (!city) {
+            valid = false;
+            showProfileInlineError('#city', 'City is required.');
+        } else if (!/^[A-Za-z ]+$/.test(city)) {
+            valid = false;
+            showProfileInlineError('#city', 'City must contain only letters.');
+        }
+        // Zip code (required, 4-8 alphanumeric)
+        let zipcode = $('#zipcode').val().trim();
+        if (!zipcode) {
+            valid = false;
+            showProfileInlineError('#zipcode', 'Zip code is required.');
+        } else if (!/^[a-zA-Z0-9\- ]{4,8}$/.test(zipcode)) {
+            valid = false;
+            showProfileInlineError('#zipcode', 'Zip code must be 4-8 letters/numbers.');
+        }
+        // Phone (required, 7-15 digits, numbers only)
+        let phone = $('#phone').val().trim();
+        if (!phone) {
+            valid = false;
+            showProfileInlineError('#phone', 'Phone is required.');
+        } else if (!/^\d{7,15}$/.test(phone)) {
+            valid = false;
+            showProfileInlineError('#phone', 'Phone must be 7-15 digits and numbers only.');
+        }
+        // Optionally: validate avatar file type/size if present
+        let avatar = $('#avatar')[0];
+        if (avatar && avatar.files && avatar.files.length > 0) {
+            let file = avatar.files[0];
+            let ext = file.name.split('.').pop().toLowerCase();
+            let allowed = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+            if (!allowed.includes(ext)) {
+                valid = false;
+                showProfileInlineError('#avatar', 'Only image files are allowed (jpg, jpeg, png, gif, bmp, webp).');
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                valid = false;
+                showProfileInlineError('#avatar', 'Avatar image must be less than 2MB.');
+            }
+        }
+        return valid;
+    }
+    function validateLoginForm() {
+        let valid = true;
+        clearUserInlineErrors();
+        let email = $('#email').val().trim();
+        let password = $('#password').val();
+        // Email
+        if (!email) {
+            valid = false;
+            showUserInlineError('#email', 'Email is required.');
+        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+            valid = false;
+            showUserInlineError('#email', 'Invalid email format. Only letters, numbers, @ and . are allowed.');
+        } else if (/[^a-zA-Z0-9@.]/.test(email.replace(/@|\./g, ''))) {
+            valid = false;
+            showUserInlineError('#email', 'Email must not contain special characters except @ and .');
+        }
+        // Password
+        if (!password) {
+            valid = false;
+            showUserInlineError('#password', 'Password is required.');
+        }
+        return valid;
+    }
+
+    // Fix: Use both form submit and #register button click to trigger AJAX registration, but only submit via AJAX once
+    function handleRegisterSubmit(e) {
         e.preventDefault();
+        if (!validateRegisterForm()) return;
         const last_name  = $('#last_name').val();
         const first_name = $('#first_name').val();
         const email      = $('#email').val();
         const password   = $('#password').val();
-
         const user = { last_name, first_name, email, password };
-
         $.ajax({
             method: "POST",
             url: `${url}api/v1/users/register`,
@@ -47,14 +222,27 @@ $(document).ready(function () {
                 });
             },
             error: function (error) {
-                console.log(error);
+                let msg = 'An error occurred.';
+                if (error.responseJSON && error.responseJSON.message) {
+                    msg = error.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Registration Failed',
+                    text: msg
+                });
             }
         });
+    }
+    $('#registerForm').off('submit').on('submit', handleRegisterSubmit);
+    $('#register').off('click').on('click', function(e) {
+        e.preventDefault();
+        $('#registerForm').submit();
     });
 
-    $("#login").on('click', function (e) {
+    $("#login").off('click').on('click', function (e) {
         e.preventDefault();
-
+        if (!validateLoginForm()) return;
         let email = $("#email").val()
         let password = $("#password").val()
         let user = {
@@ -129,17 +317,15 @@ $(document).ready(function () {
         }
     });
 
-    $("#updateBtn").on('click', function (event) {
+    $("#updateBtn").off('click').on('click', function (event) {
         event.preventDefault();
+        if (!validateProfileForm()) return;
         let userId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId')
         let jwtToken = sessionStorage.getItem('jwtToken');
-
         var data = $('#profileForm')[0];
-        console.log(data);
         let formData = new FormData(data);
         let updateUserId = sessionStorage.getItem('userId') ?? sessionStorage.getItem('userId');
         formData.append('userId', updateUserId)
-
         $.ajax({
             method: "POST",
             url: `${url}api/v1/users/update-profile`,
@@ -149,7 +335,6 @@ $(document).ready(function () {
             dataType: "json",
             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
-                console.log(data);
                 Swal.fire({
                     text: data.message,
                     showConfirmButton: false,
@@ -159,7 +344,6 @@ $(document).ready(function () {
                 });
             },
             error: function (error) {
-                console.log(error);
                 let msg = 'An error occurred.';
                 if (error.status === 401) {
                     msg = '401 Unauthorized: You are not authorized. Please log in again.';

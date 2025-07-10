@@ -128,67 +128,114 @@ $(document).ready(function () {
         }
     });
 
-    // Helper function to validate the item form
+    // Enhanced validation for item form with inline error display
+    function clearInlineErrors() {
+        $('.invalid-feedback').remove();
+        $('.is-invalid').removeClass('is-invalid');
+    }
+    function showInlineError(selector, message) {
+        const $input = $(selector);
+        $input.addClass('is-invalid');
+        if ($input.next('.invalid-feedback').length === 0) {
+            $input.after(`<div class="invalid-feedback" style="display:block;">${message}</div>`);
+        }
+    }
     function validateItemForm() {
         let valid = true;
-        let messages = [];
-        // Name (required)
-        if (!$('#name').val().trim()) {
+        clearInlineErrors();
+        // Name (required, min 2 chars, alpha only)
+        let name = $('#name').val().trim();
+        if (!name) {
             valid = false;
-            messages.push('Name is required.');
-        }
-        // Category (required)
-        if (!$('#category').val().trim()) {
+            showInlineError('#name', 'Name is required.');
+        } else if (name.length < 2) {
             valid = false;
-            messages.push('Category is required.');
-        }
-        // Description (required)
-        if (!$('#desc').val().trim()) {
+            showInlineError('#name', 'Name must be at least 2 characters.');
+        } else if (!/^[A-Za-z ]+$/.test(name)) {
             valid = false;
-            messages.push('Description is required.');
+            showInlineError('#name', 'Name must contain only letters.');
         }
-        // Sell Price (required, must be a number > 0)
+        // Category (required, min 2 chars, alpha only)
+        let category = $('#category').val().trim();
+        if (!category) {
+            valid = false;
+            showInlineError('#category', 'Category is required.');
+        } else if (category.length < 2) {
+            valid = false;
+            showInlineError('#category', 'Category must be at least 2 characters.');
+        } else if (!/^[A-Za-z ]+$/.test(category)) {
+            valid = false;
+            showInlineError('#category', 'Category must contain only letters.');
+        }
+        // Description (required, min 5 chars, allow letters, numbers, punctuation)
+        let desc = $('#desc').val().trim();
+        if (!desc) {
+            valid = false;
+            showInlineError('#desc', 'Description is required.');
+        } else if (desc.length < 5) {
+            valid = false;
+            showInlineError('#desc', 'Description must be at least 5 characters.');
+        } else if (!/^[A-Za-z0-9 .,;:!?'"()\-]+$/.test(desc)) {
+            valid = false;
+            showInlineError('#desc', 'Description contains invalid characters.');
+        }
+        // Sell Price (required, must be a number > 0, numbers only)
         let sell = $('#sell').val();
         if (!sell || isNaN(sell) || Number(sell) <= 0) {
             valid = false;
-            messages.push('Sell Price is required and must be greater than 0.');
+            showInlineError('#sell', 'Sell Price is required and must be greater than 0.');
+        } else if (!/^\d+(\.\d{1,2})?$/.test(sell)) {
+            valid = false;
+            showInlineError('#sell', 'Sell Price must be a valid number.');
         }
-        // Cost Price (required, must be a number >= 0)
+        // Cost Price (required, must be a number >= 0, numbers only)
         let cost = $('#cost').val();
         if (cost === '' || isNaN(cost) || Number(cost) < 0) {
             valid = false;
-            messages.push('Cost Price is required and must be 0 or greater.');
+            showInlineError('#cost', 'Cost Price is required and must be 0 or greater.');
+        } else if (!/^\d+(\.\d{1,2})?$/.test(cost)) {
+            valid = false;
+            showInlineError('#cost', 'Cost Price must be a valid number.');
         }
         // Quantity (required, must be integer >= 0)
         let qty = $('#qty').val();
         if (qty === '' || isNaN(qty) || !Number.isInteger(Number(qty)) || Number(qty) < 0) {
             valid = false;
-            messages.push('Quantity is required and must be a non-negative integer.');
+            showInlineError('#qty', 'Quantity is required and must be a non-negative integer.');
         }
         // Show Item (required)
         if (!$('#show_item').val()) {
             valid = false;
-            messages.push('Show Item selection is required.');
+            showInlineError('#show_item', 'Show Item selection is required.');
         }
-        return { valid, messages };
+        // Images (optional, but if present, check type and size)
+        let files = $('#img')[0].files;
+        for (let i = 0; i < files.length; i++) {
+            let ext = files[i].name.split('.').pop().toLowerCase();
+            let allowed = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+            if (!allowed.includes(ext)) {
+                valid = false;
+                showInlineError('#img', 'Only image files are allowed (jpg, jpeg, png, gif, bmp, webp).');
+                break;
+            }
+            if (files[i].size > 2 * 1024 * 1024) { // 2MB limit
+                valid = false;
+                showInlineError('#img', 'Each image must be less than 2MB.');
+                break;
+            }
+        }
+        return valid;
     }
 
     $("#itemSubmit").on('click', function (e) {
         e.preventDefault();
-        var validation = validateItemForm();
-        if (!validation.valid) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Validation Error',
-                html: validation.messages.join('<br>')
-            });
+        if (!validateItemForm()) {
             return;
         }
         let formData = new FormData();
         $('#iform').serializeArray().forEach(function(field) {
             formData.append(field.name, field.value);
         });
-        // Append all selected files as images[]
         let files = $('#img')[0].files;
         for (let i = 0; i < files.length; i++) {
             formData.append('images', files[i]);
@@ -280,13 +327,7 @@ $(document).ready(function () {
 
     $("#itemUpdate").on('click', function (e) {
         e.preventDefault();
-        var validation = validateItemForm();
-        if (!validation.valid) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Validation Error',
-                html: validation.messages.join('<br>')
-            });
+        if (!validateItemForm()) {
             return;
         }
         var id = $('#itemId').val();
@@ -295,15 +336,13 @@ $(document).ready(function () {
         $('#iform').serializeArray().forEach(function(field) {
             formData.append(field.name, field.value);
         });
-        // Add _method=PUT for method-override support
         formData.append('_method', 'PUT');
-        // Append all selected files as images[]
         let files = $('#img')[0].files;
         for (let i = 0; i < files.length; i++) {
             formData.append('images', files[i]);
         }
         $.ajax({
-            method: "POST", // Use POST instead of PUT
+            method: "POST",
             url: `${url}api/v1/items/${id}`,
             data: formData,
             contentType: false,
