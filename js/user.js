@@ -43,9 +43,9 @@ $(document).ready(function () {
         } else if (last_name.length < 2) {
             valid = false;
             showUserInlineError('#last_name', 'Last name must be at least 2 characters.');
-        } else if (!/^[A-Za-z]+$/.test(last_name)) {
+        } else if (!/^[A-Za-z ]+$/.test(last_name)) {
             valid = false;
-            showUserInlineError('#last_name', 'Last name must contain only letters.');
+            showUserInlineError('#last_name', 'Last name must contain only letters and spaces.');
         }
         // First Name (required, min 2 chars, alpha only)
         if (!first_name) {
@@ -54,9 +54,9 @@ $(document).ready(function () {
         } else if (first_name.length < 2) {
             valid = false;
             showUserInlineError('#first_name', 'First name must be at least 2 characters.');
-        } else if (!/^[A-Za-z]+$/.test(first_name)) {
+        } else if (!/^[A-Za-z ]+$/.test(first_name)) {
             valid = false;
-            showUserInlineError('#first_name', 'First name must contain only letters.');
+            showUserInlineError('#first_name', 'First name must contain only letters and spaces.');
         }
         // Email (only allow a-z, A-Z, 0-9, @, . and must be in format user@mail.com)
         if (!email) {
@@ -102,9 +102,9 @@ $(document).ready(function () {
         } else if (last_name.length < 2) {
             valid = false;
             showProfileInlineError('#last_name', 'Last name must be at least 2 characters.');
-        } else if (!/^[A-Za-z]+$/.test(last_name)) {
+        } else if (!/^[A-Za-z ]+$/.test(last_name)) {
             valid = false;
-            showProfileInlineError('#last_name', 'Last name must contain only letters.');
+            showProfileInlineError('#last_name', 'Last name must contain only letters and spaces.');
         }
         // First Name (required, min 2 chars, alpha only)
         let first_name = $('#first_name').val().trim();
@@ -114,9 +114,9 @@ $(document).ready(function () {
         } else if (first_name.length < 2) {
             valid = false;
             showProfileInlineError('#first_name', 'First name must be at least 2 characters.');
-        } else if (!/^[A-Za-z]+$/.test(first_name)) {
+        } else if (!/^[A-Za-z ]+$/.test(first_name)) {
             valid = false;
-            showProfileInlineError('#first_name', 'First name must contain only letters.');
+            showProfileInlineError('#first_name', 'First name must contain only letters and spaces.');
         }
         // Address (required)
         let address = $('#address').val().trim();
@@ -161,9 +161,9 @@ $(document).ready(function () {
                 valid = false;
                 showProfileInlineError('#avatar', 'Only image files are allowed (jpg, jpeg, png, gif, bmp, webp).');
             }
-            if (file.size > 2 * 1024 * 1024) {
+            if (file.size > 10 * 1024 * 1024) {
                 valid = false;
-                showProfileInlineError('#avatar', 'Avatar image must be less than 2MB.');
+                showProfileInlineError('#avatar', 'Avatar image must be less than 10MB.');
             }
         }
         return valid;
@@ -240,6 +240,134 @@ $(document).ready(function () {
         $('#registerForm').submit();
     });
 
+    // Function to check if user profile is complete and redirect accordingly
+    function checkUserProfileAndRedirect(userId, jwtToken) {
+        $.ajax({
+            url: `${url}api/v1/users/customer-by-userid/${userId}`,
+            method: 'GET',
+            dataType: 'json',
+            headers: {
+                'Authorization': 'Bearer ' + jwtToken
+            },
+            success: function(res) {
+                console.log('Profile check response:', res);
+                if (res.success && res.customer) {
+                    const customer = res.customer;
+                    // Check if all required profile fields are filled
+                    const isProfileComplete = customer.title && 
+                                            customer.last_name && 
+                                            customer.first_name && 
+                                            customer.address && 
+                                            customer.city && 
+                                            customer.zipcode && 
+                                            customer.phone;
+                    
+                    if (isProfileComplete) {
+                        // Profile is complete, redirect to home
+                        window.location.href = 'home.html';
+                    } else {
+                        // Profile is incomplete, redirect to profile to complete it
+                        window.location.href = 'profile.html';
+                    }
+                } else {
+                    // Error getting profile, default to profile page
+                    window.location.href = 'profile.html';
+                }
+            },
+            error: function(err) {
+                console.log('Error checking profile:', err);
+                // Error getting profile, default to profile page
+                window.location.href = 'profile.html';
+            }
+        });
+    }
+
+    // Enhanced function to show personalized welcome message and redirect
+    function showWelcomeMessageAndRedirect(userId, jwtToken) {
+        $.ajax({
+            url: `${url}api/v1/users/customer-by-userid/${userId}`,
+            method: 'GET',
+            dataType: 'json',
+            headers: {
+                'Authorization': 'Bearer ' + jwtToken
+            },
+            success: function(res) {
+                console.log('Welcome profile response:', res);
+                let userName = 'User';
+                let redirectMessage = '';
+                let redirectUrl = 'profile.html';
+                
+                if (res.success && res.customer) {
+                    const customer = res.customer;
+                    
+                    // Build user's display name
+                    if (customer.first_name && customer.last_name) {
+                        userName = `${customer.first_name} ${customer.last_name}`;
+                    } else if (customer.first_name) {
+                        userName = customer.first_name;
+                    } else if (customer.last_name) {
+                        userName = customer.last_name;
+                    }
+                    
+                    // Check if profile is complete
+                    const isProfileComplete = customer.title && 
+                                            customer.last_name && 
+                                            customer.first_name && 
+                                            customer.address && 
+                                            customer.city && 
+                                            customer.zipcode && 
+                                            customer.phone;
+                    
+                    if (isProfileComplete) {
+                        redirectMessage = 'Taking you to the store...';
+                        redirectUrl = 'home.html';
+                    } else {
+                        redirectMessage = 'Please complete your profile to continue...';
+                        redirectUrl = 'profile.html';
+                    }
+                }
+                
+                // Show enhanced welcome message with user's name
+                Swal.fire({
+                    icon: 'success',
+                    title: `Welcome Back, ${userName}!`,
+                    text: redirectMessage,
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    position: "center",
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#ffffff',
+                    customClass: {
+                        popup: 'gadget-welcome-popup'
+                    }
+                }).then(() => {
+                    window.location.href = redirectUrl;
+                });
+            },
+            error: function(err) {
+                console.log('Error getting welcome profile:', err);
+                // Show generic welcome and redirect to profile
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Welcome Back!',
+                    text: 'Please complete your profile to continue...',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    position: "center",
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#ffffff',
+                    customClass: {
+                        popup: 'gadget-welcome-popup'
+                    }
+                }).then(() => {
+                    window.location.href = 'profile.html';
+                });
+            }
+        });
+    }
+
     $("#login").off('click').on('click', function (e) {
         e.preventDefault();
         if (!validateLoginForm()) return;
@@ -267,19 +395,14 @@ $(document).ready(function () {
                         html: `<textarea style='width:100%;height:80px'>${data.token}</textarea>`
                     });
                 }
-                Swal.fire({
-                    text: data.success,
-                    showConfirmButton: false,
-                    timer: 1000,
-                    timerProgressBar: true,
-                    position: "center"
-
-                });
+                
                 sessionStorage.setItem('userId', JSON.stringify(data.user.id))
                 sessionStorage.setItem('userEmail', data.user.email)
                 // Optionally store the token for later use
                 if (data.token) sessionStorage.setItem('jwtToken', data.token)
-                window.location.href = 'profile.html'
+                
+                // Show enhanced welcome message and check profile
+                showWelcomeMessageAndRedirect(data.user.id, data.token);
             },
             error: function (error) {
                 console.log(error);
@@ -335,12 +458,35 @@ $(document).ready(function () {
             dataType: "json",
             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
+                // Get user's name for personalization
+                let firstName = $('#first_name').val() || 'User';
+                let lastName = $('#last_name').val() || '';
+                let fullName = lastName ? `${firstName} ${lastName}` : firstName;
+                
+                // Simple but elegant profile update message
                 Swal.fire({
-                    text: data.message,
-                    showConfirmButton: false,
-                    timer: 1000,
+                    icon: 'success',
+                    title: 'Profile Updated Successfully!',
+                    html: `
+                        <div class="profile-update-simple">
+                            <div class="update-user-info">
+                                <i class="fas fa-user-check text-success mb-2" style="font-size: 2rem;"></i>
+                                <p class="mb-2"><strong>Welcome, ${fullName}!</strong></p>
+                                <p class="text-muted mb-0">Your profile information has been saved successfully.</p>
+                            </div>
+                        </div>
+                    `,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Great!',
+                    timer: 4000,
                     timerProgressBar: true,
-                    position: "center"
+                    position: "center",
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#ffffff',
+                    customClass: {
+                        popup: 'gadget-simple-update-popup',
+                        confirmButton: 'btn btn-light'
+                    }
                 });
             },
             error: function (error) {
@@ -516,31 +662,118 @@ $(document).ready(function () {
                 },
                 headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
             },
-            dom: 'Bfrtip',
+            dom: 'frtip', // Remove 'B' to disable built-in buttons
+            // Temporarily remove buttons to avoid node errors
+            /*
             buttons: [
-                'pdf',
-                'excel'
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-2"></i>PDF',
+                    className: 'btn btn-danger btn-sm d-none', // Hide default button
+                    title: 'GadgetEssence - Users Report',
+                    customize: function(doc) {
+                        doc.content[1].table.widths = ['15%', '25%', '20%', '20%', '10%', '10%'];
+                        doc.styles.tableHeader.fillColor = '#667eea';
+                        doc.styles.tableHeader.color = 'white';
+                    }
+                },
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-2"></i>Excel',
+                    className: 'btn btn-success btn-sm d-none', // Hide default button
+                    title: 'GadgetEssence - Users Report'
+                }
             ],
+            */
             columns: [
                 {
                     data: 'image_path',
-                    render: function (data) {
+                    width: "80px",
+                    className: "text-center",
+                    orderable: false,
+                    render: function (data, type, row) {
                         if (data) {
-                            return `<img src='${url}${data}' style='width:50px;height:50px;object-fit:cover;border-radius:50%;' />`;
+                            return `<img src='${url}${data}' style='width:50px;height:50px;object-fit:cover;border-radius:50%;' alt='User Avatar' />`;
                         } else {
-                            return '';
+                            // Create avatar placeholder with first letter of first name
+                            const initial = row.first_name ? row.first_name.charAt(0).toUpperCase() : '?';
+                            return `<div style='width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-weight:bold;display:flex;align-items:center;justify-content:center;margin:0 auto;'>${initial}</div>`;
                         }
                     }
                 },
-                { data: 'email' },
-                { data: 'last_name' },
-                { data: 'first_name' },
-                { data: 'status' },
-                { data: 'role' },
+                { 
+                    data: 'email',
+                    render: function (data) {
+                        return `<span class='user-email'>${data}</span>`;
+                    }
+                },
+                { 
+                    data: 'last_name',
+                    render: function (data) {
+                        return `<span class='user-name'>${data}</span>`;
+                    }
+                },
+                { 
+                    data: 'first_name',
+                    render: function (data) {
+                        return `<span class='user-name'>${data}</span>`;
+                    }
+                },
+                { 
+                    data: 'status',
+                    render: function (data) {
+                        let badgeClass = 'status-badge';
+                        let iconClass = 'fas fa-circle';
+                        
+                        if (data === 'active') {
+                            badgeClass += ' status-active';
+                            iconClass = 'fas fa-check-circle';
+                        } else {
+                            badgeClass += ' status-inactive';
+                            iconClass = 'fas fa-times-circle';
+                        }
+                        
+                        return `<span class='${badgeClass}'>
+                            <i class='${iconClass} me-1'></i>
+                            ${data.charAt(0).toUpperCase() + data.slice(1)}
+                        </span>`;
+                    }
+                },
+                { 
+                    data: 'role',
+                    render: function (data) {
+                        let badgeClass = 'status-badge';
+                        let iconClass = 'fas fa-user';
+                        
+                        if (data === 'admin') {
+                            badgeClass += ' role-admin';
+                            iconClass = 'fas fa-user-shield';
+                        } else {
+                            badgeClass += ' role-user';
+                            iconClass = 'fas fa-user';
+                        }
+                        
+                        return `<span class='${badgeClass}'>
+                            <i class='${iconClass} me-1'></i>
+                            ${data.charAt(0).toUpperCase() + data.slice(1)}
+                        </span>`;
+                    }
+                },
                 {
                     data: null,
                     render: function (data, type, row) {
-                        return `<a href='#' class='editBtn' data-id='${row.user_id}'><i class='fas fa-edit' style='font-size:24px'></i></a> <a href='#' class='deleteBtn' data-id='${row.user_id}'><i class='fas fa-trash-alt' style='font-size:24px;color:red'></i></a>`;
+                        return `<div class="action-buttons">
+                            <a href='#' class='editBtn btn btn-sm btn-outline-primary me-2' 
+                               data-id='${row.user_id}' 
+                               title="Edit User">
+                                <i class='fas fa-edit'></i>
+                            </a>
+                            <a href='#' class='deleteBtn btn btn-sm btn-outline-danger' 
+                               data-id='${row.user_id}' 
+                               title="Delete User">
+                                <i class='fas fa-trash-alt'></i>
+                            </a>
+                        </div>`;
                     }
                 }
             ]
@@ -619,30 +852,169 @@ $(document).ready(function () {
                     if (result) {
                         $.ajax({
                             method: 'DELETE',
-                            url: `${url}api/v1/users/customers/${userId}`,
+                            url: `${url}api/v1/users/delete-user/${userId}`,
                             dataType: 'json',
                             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
                             success: function (data) {
                                 table.ajax.reload();
-                                bootbox.alert(data.message || 'User deleted.');
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'User Deleted',
+                                    text: data.message || 'User deleted successfully.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
                             },
                             error: function (xhr) {
-                                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
+                                let msg = xhr.status === 401 ? 'Unauthorized: Please log in again.' : 
+                                         xhr.status === 404 ? 'User not found.' :
+                                         (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
                                 Swal.fire({
-                                  icon: 'error',
-                                  title: 'Failed to delete user',
-                                  text: msg
+                                    icon: 'error',
+                                    title: 'Delete Failed',
+                                    text: msg,
+                                    confirmButtonText: 'OK'
                                 }).then(() => {
-                                  if (xhr.status === 401) {
-                                    sessionStorage.clear();
-                                    window.location.href = 'login.html';
-                                  }
+                                    if (xhr.status === 401) {
+                                        sessionStorage.clear();
+                                        window.location.href = 'login.html';
+                                    }
                                 });
                             }
                         });
                     }
                 }
             });
+        });
+        
+        // Custom Export Functions
+        function exportUsersToPDF() {
+            // Get all data from the DataTable
+            var data = table.rows().data().toArray();
+            
+            if (data.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Data',
+                    text: 'No users to export.'
+                });
+                return;
+            }
+            
+            // Create PDF content
+            var docDefinition = {
+                content: [
+                    { 
+                        text: 'GadgetEssence - Users Report', 
+                        fontSize: 16, 
+                        alignment: 'center', 
+                        margin: [0, 0, 0, 20] 
+                    },
+                    {
+                        table: {
+                            headerRows: 1,
+                            widths: ['25%', '20%', '20%', '15%', '10%', '10%'],
+                            body: [
+                                ['Email', 'Last Name', 'First Name', 'Status', 'Role', 'Avatar'],
+                                ...data.map(user => [
+                                    user.email || '',
+                                    user.last_name || '',
+                                    user.first_name || '',
+                                    user.status || '',
+                                    user.role || '',
+                                    user.image_path ? 'Yes' : 'No'
+                                ])
+                            ]
+                        }
+                    }
+                ],
+                styles: {
+                    tableHeader: {
+                        fillColor: '#667eea',
+                        color: 'white',
+                        fontSize: 10
+                    }
+                },
+                defaultStyle: {
+                    fontSize: 9
+                }
+            };
+            
+            pdfMake.createPdf(docDefinition).download('GadgetEssence-Users-Report.pdf');
+        }
+        
+        function exportUsersToExcel() {
+            // Get all data from the DataTable
+            var data = table.rows().data().toArray();
+            
+            if (data.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Data',
+                    text: 'No users to export.'
+                });
+                return;
+            }
+            
+            // Create CSV content
+            var csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Email,Last Name,First Name,Status,Role,Avatar\n";
+            
+            data.forEach(user => {
+                var row = [
+                    user.email || '',
+                    (user.last_name || '').replace(/"/g, '""'), // Escape quotes
+                    (user.first_name || '').replace(/"/g, '""'),
+                    user.status || '',
+                    user.role || '',
+                    user.image_path ? 'Yes' : 'No'
+                ].map(field => `"${field}"`).join(",");
+                csvContent += row + "\n";
+            });
+            
+            // Create download link
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "GadgetEssence-Users-Report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Custom Export Button Handlers
+        $('#exportUsersPDF').on('click', function() {
+            $(this).addClass('loading');
+            try {
+                exportUsersToPDF();
+            } catch (error) {
+                console.error('PDF Export Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Export Failed',
+                    text: 'Failed to generate PDF report.'
+                });
+            }
+            setTimeout(() => {
+                $(this).removeClass('loading');
+            }, 1000);
+        });
+        
+        $('#exportUsersExcel').on('click', function() {
+            $(this).addClass('loading');
+            try {
+                exportUsersToExcel();
+            } catch (error) {
+                console.error('Excel Export Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Export Failed',
+                    text: 'Failed to generate Excel report.'
+                });
+            }
+            setTimeout(() => {
+                $(this).removeClass('loading');
+            }, 1000);
         });
     }
 })

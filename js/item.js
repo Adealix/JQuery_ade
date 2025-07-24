@@ -57,29 +57,76 @@ $(document).ready(function () {
             },
             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
         },
-        dom: 'Bfrtip',
+        dom: 'frtip', // Remove 'B' to disable built-in buttons
+        // Temporarily remove buttons to avoid node errors
+        /*
         buttons: [
-            'pdf',
-            'excel',
             {
-                text: 'Add item',
-                className: 'btn btn-primary',
-                action: function (e, dt, node, config) {
-                    $("#iform").trigger("reset");
-                    $('#itemModal').modal('show');
-                    $('#itemUpdate').hide(); // Always hide Update
-                    $('#itemSubmit').show(); // Always show Save
-                    $('#itemImage').remove();
-                    $('#itemModalTitle').text('Create New Item'); // Set modal title for Add
+                extend: 'pdfHtml5',
+                text: '<i class="fas fa-file-pdf me-2"></i>PDF',
+                className: 'btn btn-danger btn-sm d-none', // Hide default button
+                title: 'GadgetEssence - Items Report',
+                exportOptions: {
+                    columns: [0, 1, 2, 4, 5, 6, 7, 8], // Export specific columns: ID, Name, Category, Description, Sell Price, Cost Price, Show Item, Quantity
+                    modifier: {
+                        page: 'all',
+                        search: 'none'
+                    }
+                },
+                customize: function(doc) {
+                    // Set column widths for 8 columns (excluding Images and Action columns via no-export class)
+                    doc.content[1].table.widths = ['10%', '20%', '15%', '25%', '12%', '12%', '8%', '8%'];
+                    
+                    // Update column headers to match exported columns
+                    if (doc.content[1].table.body && doc.content[1].table.body[0]) {
+                        doc.content[1].table.body[0] = ['ID', 'Name', 'Category', 'Description', 'Sell Price', 'Cost Price', 'Show Item', 'Quantity'];
+                    }
+                    
+                    doc.styles.tableHeader.fillColor = '#667eea';
+                    doc.styles.tableHeader.color = 'white';
+                    doc.styles.tableHeader.fontSize = 10;
+                    doc.styles.tableBodyEven.fontSize = 9;
+                    doc.styles.tableBodyOdd.fontSize = 9;
+                    
+                    // Add custom styling
+                    doc.defaultStyle.fontSize = 9;
+                    doc.content[0].text = 'GadgetEssence - Items Report';
+                    doc.content[0].fontSize = 16;
+                    doc.content[0].alignment = 'center';
+                    doc.content[0].margin = [0, 0, 0, 20];
+                }
+            },
+            {
+                extend: 'excelHtml5',
+                text: '<i class="fas fa-file-excel me-2"></i>Excel',
+                className: 'btn btn-success btn-sm d-none', // Hide default button
+                title: 'GadgetEssence - Items Report',
+                exportOptions: {
+                    columns: [0, 1, 2, 4, 5, 6, 7, 8], // Export specific columns: ID, Name, Category, Description, Sell Price, Cost Price, Show Item, Quantity
+                    modifier: {
+                        page: 'all',
+                        search: 'none'
+                    }
                 }
             }
         ],
+        */
         columns: [
-            { data: 'item_id' },
-            { data: 'name' },
-            { data: 'category' },
+            { 
+                data: 'item_id', 
+                width: '5%'
+            },
+            { 
+                data: 'name', 
+                width: '15%'
+            },
+            { 
+                data: 'category', 
+                width: '12%'
+            },
             {
                 data: 'images',
+                width: '10%',
                 render: function (data, type, row, meta) {
                     if (Array.isArray(data) && data.length > 0) {
                         let imgId = 'img-carousel-' + row.item_id;
@@ -97,13 +144,36 @@ $(document).ready(function () {
                     }
                 }
             },
-            { data: 'description' },
-            { data: 'sell_price' },
-            { data: 'cost_price' },
-            { data: 'show_item' },
-            { data: 'quantity', defaultContent: '' },
+            { 
+                data: 'description', 
+                width: '20%',
+                render: function(data, type, row) {
+                    if (type === 'display' && data && data.length > 50) {
+                        return '<span title="' + data + '">' + data.substr(0, 50) + '...</span>';
+                    }
+                    return data || '';
+                }
+            },
+            { 
+                data: 'sell_price', 
+                width: '8%'
+            },
+            { 
+                data: 'cost_price', 
+                width: '8%'
+            },
+            { 
+                data: 'show_item', 
+                width: '7%'
+            },
+            { 
+                data: 'quantity', 
+                defaultContent: '', 
+                width: '7%'
+            },
             {
                 data: null,
+                width: '8%',
                 render: function (data, type, row) {
                     return "<a href='#' class = 'editBtn' id='editbtn' data-id=" + data.item_id + "><i class='fas fa-edit' aria-hidden='true' style='font-size:24px' ></i></a><a href='#'  class='deletebtn' data-id=" + data.item_id + "><i  class='fas fa-trash-alt' style='font-size:24px; color:red' ></a></i>";
                 }
@@ -155,17 +225,11 @@ $(document).ready(function () {
             valid = false;
             showInlineError('#name', 'Name must contain only letters.');
         }
-        // Category (required, min 2 chars, alpha only)
-        let category = $('#category').val().trim();
-        if (!category) {
+        // Category (required selection)
+        let category = $('#category').val();
+        if (!category || category === '') {
             valid = false;
-            showInlineError('#category', 'Category is required.');
-        } else if (category.length < 2) {
-            valid = false;
-            showInlineError('#category', 'Category must be at least 2 characters.');
-        } else if (!/^[A-Za-z ]+$/.test(category)) {
-            valid = false;
-            showInlineError('#category', 'Category must contain only letters.');
+            showInlineError('#category', 'Please select a category.');
         }
         // Description (required, min 5 chars, allow letters, numbers, punctuation)
         let desc = $('#desc').val().trim();
@@ -218,9 +282,9 @@ $(document).ready(function () {
                 showInlineError('#img', 'Only image files are allowed (jpg, jpeg, png, gif, bmp, webp).');
                 break;
             }
-            if (files[i].size > 2 * 1024 * 1024) { // 2MB limit
+            if (files[i].size > 15 * 1024 * 1024) { // 15MB limit
                 valid = false;
-                showInlineError('#img', 'Each image must be less than 2MB.');
+                showInlineError('#img', 'Each image must be less than 15MB.');
                 break;
             }
         }
@@ -250,6 +314,16 @@ $(document).ready(function () {
             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
             success: function (data) {
                 $("#itemModal").modal("hide");
+                
+                // Reset the form and modal state completely
+                $("#iform").trigger("reset");
+                $('#itemId').remove(); // Remove any hidden item_id input
+                $('#itemImage').remove(); // Remove any existing image preview
+                clearInlineErrors(); // Clear any validation errors
+                
+                // Reset modal state flags
+                isEditItem = false;
+                
                 Swal.fire({
                   icon: 'success',
                   title: 'Success',
@@ -380,14 +454,14 @@ $(document).ready(function () {
         var id = $(this).data('id');
         var $row = $(this).closest('tr');
         bootbox.confirm({
-            message: "do you want to delete this item",
+            message: "Do you want to Delete this Item?",
             buttons: {
                 confirm: {
-                    label: 'yes',
+                    label: 'Yes',
                     className: 'btn-success'
                 },
                 cancel: {
-                    label: 'no',
+                    label: 'No',
                     className: 'btn-danger'
                 }
             },
@@ -430,6 +504,11 @@ $(document).ready(function () {
     // When Add button is clicked
     $(document).on('click', '[data-target="#itemModal"]', function () {
       isEditItem = false;
+      // Reset form completely when Add button is clicked
+      $("#iform").trigger("reset");
+      $('#itemId').remove(); // Remove any hidden item_id input
+      $('#itemImage').remove(); // Remove any existing image preview
+      clearInlineErrors(); // Clear any validation errors
     });
 
     // When Edit icon is clicked (assuming .editBtn is the class)
@@ -446,6 +525,154 @@ $(document).ready(function () {
         $('#itemModalTitle').text('Create New Item');
         $('#itemSubmit').show();
         $('#itemUpdate').hide();
+        // Ensure form is clean for new item
+        $("#iform").trigger("reset");
+        $('#itemId').remove();
+        $('#itemImage').remove();
+        clearInlineErrors();
       }
+    });
+    
+    // Reset form state when modal is hidden
+    $('#itemModal').on('hidden.bs.modal', function () {
+      $("#iform").trigger("reset");
+      $('#itemId').remove();
+      $('#itemImage').remove();
+      clearInlineErrors();
+      isEditItem = false; // Reset edit flag
+    });
+    
+    // Custom Export Functions
+    function exportToPDF() {
+        // Get all data from the DataTable
+        var data = table.rows().data().toArray();
+        
+        if (data.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Data',
+                text: 'No items to export.'
+            });
+            return;
+        }
+        
+        // Create PDF content
+        var docDefinition = {
+            content: [
+                { 
+                    text: 'GadgetEssence - Items Report', 
+                    fontSize: 16, 
+                    alignment: 'center', 
+                    margin: [0, 0, 0, 20] 
+                },
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['10%', '20%', '15%', '25%', '12%', '12%', '8%', '8%'],
+                        body: [
+                            ['ID', 'Name', 'Category', 'Description', 'Sell Price', 'Cost Price', 'Show Item', 'Quantity'],
+                            ...data.map(item => [
+                                item.item_id || '',
+                                item.name || '',
+                                item.category || '',
+                                item.description || '',
+                                item.sell_price || '',
+                                item.cost_price || '',
+                                item.show_item || '',
+                                item.quantity || ''
+                            ])
+                        ]
+                    }
+                }
+            ],
+            styles: {
+                tableHeader: {
+                    fillColor: '#667eea',
+                    color: 'white',
+                    fontSize: 10
+                }
+            },
+            defaultStyle: {
+                fontSize: 9
+            }
+        };
+        
+        pdfMake.createPdf(docDefinition).download('GadgetEssence-Items-Report.pdf');
+    }
+    
+    function exportToExcel() {
+        // Get all data from the DataTable
+        var data = table.rows().data().toArray();
+        
+        if (data.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Data',
+                text: 'No items to export.'
+            });
+            return;
+        }
+        
+        // Create CSV content
+        var csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "ID,Name,Category,Description,Sell Price,Cost Price,Show Item,Quantity\n";
+        
+        data.forEach(item => {
+            var row = [
+                item.item_id || '',
+                (item.name || '').replace(/"/g, '""'), // Escape quotes
+                (item.category || '').replace(/"/g, '""'),
+                (item.description || '').replace(/"/g, '""'),
+                item.sell_price || '',
+                item.cost_price || '',
+                item.show_item || '',
+                item.quantity || ''
+            ].map(field => `"${field}"`).join(",");
+            csvContent += row + "\n";
+        });
+        
+        // Create download link
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "GadgetEssence-Items-Report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // Custom Export Button Handlers
+    $('#exportItemsPDF').on('click', function() {
+        $(this).addClass('loading');
+        try {
+            exportToPDF();
+        } catch (error) {
+            console.error('PDF Export Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Export Failed',
+                text: 'Failed to generate PDF report.'
+            });
+        }
+        setTimeout(() => {
+            $(this).removeClass('loading');
+        }, 1000);
+    });
+    
+    $('#exportItemsExcel').on('click', function() {
+        $(this).addClass('loading');
+        try {
+            exportToExcel();
+        } catch (error) {
+            console.error('Excel Export Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Export Failed',
+                text: 'Failed to generate Excel report.'
+            });
+        }
+        setTimeout(() => {
+            $(this).removeClass('loading');
+        }, 1000);
     });
 })

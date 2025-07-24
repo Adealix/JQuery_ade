@@ -1,16 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Orders Management</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" />
+    <title>Orders Management - GadgetEssence</title>
+    
+    <!-- Bootstrap 4 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" 
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" 
+          crossorigin="anonymous" />
+    
+    <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/dataTables.bootstrap4.min.css" />
-    <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet" />
     <link href="https://cdn.datatables.net/buttons/2.3.5/css/buttons.dataTables.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css" />
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" />
+    
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css" 
+          integrity="sha512-fjO3Vy3QodX9c6G9AUmr6WuIaEPdGRxBjD7gjatG5gGylzYyrEq3U0q+smkG6CwIY0L8XALRFHh4KPHig0Q1ug==" 
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Custom GadgetEssence CSS -->
+    <link rel="stylesheet" href="css/style.css" />
+    
+    <!-- jQuery and Bootstrap JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js" 
+            integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" 
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" 
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" 
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" 
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" 
+            crossorigin="anonymous"></script>
+    
+    <!-- DataTables JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.22/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
@@ -18,58 +43,150 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.32/vfs_fonts.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.5/js/buttons.html5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+    
+    <!-- SweetAlert2 JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js" 
+            integrity="sha512-LGHBR+kJ5jZSIzhhdfytPoEHzgaYuTRifq9g5l6ja6/k9NAOsAi5dQh4zQF6JIRB8cAYxTRedERUF+97/KuivQ==" 
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- Orders JavaScript -->
     <script src="js/orders.js"></script>
 </head>
 <body>
+    <!-- GadgetEssence Header -->
     <div id="header"></div>
-    <div class="container mt-4">
-        <h2>Orders Management</h2>
-        <div class="table-responsive">
-            <table id="ordersTable" class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Date Ordered</th>
-                        <th>Date Delivery</th>
-                        <th>Status</th>
-                        <th>Customer</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+    
+    <!-- Main Admin Container -->
+    <div class="gadget-admin-container">
+        <div class="container-fluid">
+            <!-- Admin Title Section -->
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="gadget-admin-title">
+                        <i class="fas fa-shopping-cart me-3"></i>
+                        Orders Management
+                        <small class="d-block mt-2">Manage customer orders and track delivery status</small>
+                    </h1>
+                </div>
+            </div>
+            
+            <!-- Export Actions Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="gadget-admin-actions-bar">
+                        <div class="gadget-admin-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span>Track and manage customer orders and deliveries</span>
+                        </div>
+                        <div class="gadget-export-actions">
+                            <button type="button" class="btn gadget-btn-export" id="exportOrdersPDF">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                Export PDF
+                            </button>
+                            <button type="button" class="btn gadget-btn-export" id="exportOrdersExcel">
+                                <i class="fas fa-file-excel me-2"></i>
+                                Export Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders Table Section -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="gadget-admin-table-container">
+                        <table id="ordersTable" class="table gadget-admin-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag me-2"></i>Order ID</th>
+                                    <th><i class="fas fa-calendar-alt me-2"></i>Date Ordered</th>
+                                    <th><i class="fas fa-truck me-2"></i>Date Delivery</th>
+                                    <th><i class="fas fa-info-circle me-2"></i>Status</th>
+                                    <th><i class="fas fa-user me-2"></i>Customer</th>
+                                    <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <!-- Modal for status update -->
-    <div class="modal fade" id="statusModal" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Update Order Status</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <form id="statusForm">
-              <input type="hidden" id="modalOrderId" />
-              <div class="form-group">
-                <label for="modalStatus">Status</label>
-                <select class="form-control" id="modalStatus" required>
-                  <option value="processing">Processing</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="canceled">Canceled</option>
-                </select>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="saveStatusBtn">Save changes</button>
-          </div>
+    
+    <!-- GadgetEssence Modal for Status Update -->
+    <div class="modal fade gadget-modal" id="statusModal" tabindex="-1" role="dialog" aria-labelledby="statusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header gadget-modal-header">
+                    <h5 class="modal-title" id="statusModalLabel">
+                        <i class="fas fa-edit me-2"></i>
+                        Update Order Status
+                    </h5>
+                    <button type="button" class="close gadget-modal-close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body gadget-modal-body">
+                    <form id="statusForm" class="gadget-form">
+                        <input type="hidden" id="modalOrderId" />
+                        
+                        <div class="form-group">
+                            <label for="modalCurrentStatus" class="gadget-label">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Current Status
+                            </label>
+                            <input type="text" 
+                                   class="form-control gadget-input" 
+                                   id="modalCurrentStatus" 
+                                   readonly 
+                                   style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #dee2e6;">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="modalStatus" class="gadget-label">
+                                <i class="fas fa-exchange-alt me-2"></i>
+                                New Status <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control gadget-select" id="modalStatus" required>
+                                <option value="">-- Select New Status --</option>
+                                <option value="processing">
+                                    <i class="fas fa-clock"></i> Processing
+                                </option>
+                                <option value="delivered">
+                                    <i class="fas fa-check-circle"></i> Delivered
+                                </option>
+                                <option value="canceled">
+                                    <i class="fas fa-times-circle"></i> Canceled
+                                </option>
+                            </select>
+                            <small class="form-text" style="color: #667eea; font-weight: 500;">
+                                <i class="fas fa-envelope me-1"></i>
+                                Customer will receive an email notification when status is updated
+                            </small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer gadget-modal-footer">
+                    <button type="button" class="btn gadget-btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Cancel
+                    </button>
+                    <button type="button" class="btn gadget-btn-primary" id="saveStatusBtn">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <i class="fas fa-save me-2"></i>
+                        Update Status
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
+
+    <script>
+        $(function() {
+            $("#header").load("header.html");
+        });
+    </script>
 </body>
 </html>

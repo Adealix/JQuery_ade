@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css"
         integrity="sha512-fjO3Vy3QodX9c6G9AUmr6WuIaEPdGRxBjD7gjatG5gGylzYyrEq3U0q+smkG6CwIY0L8XALRFHh4KPHig0Q1ug=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        crossorigin="anonymous" />
+    
+    <link rel="stylesheet" href="css/style.css" />
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"
         integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
@@ -28,18 +33,28 @@
     <script src="js/cart.js"></script>
 </head>
 
-<title>cart</title>
+    <title>GadgetEssence - Shopping Cart</title>
 
-</head>
-
-<body>
+</head><body>
     <div id="header"></div>
-    <div class="container">
-    <h1>Your Cart</h1>
-    <div id="cartTable"></div>
-    <a href="home.html" class="btn btn-secondary mt-3">Continue Shopping</a>
-    <button id="checkoutBtn" class="btn btn-primary mt-3">Checkout</button>
-</div>
+    <div class="container gadget-cart-container" id="cartContainer">
+        <h1 class="mb-4 gadget-cart-title">
+            <i class="fas fa-shopping-cart" style="color: #00d4ff; margin-right: 15px;"></i>
+            Your Shopping Cart
+            <small class="d-block" style="font-size: 0.6em; color: #7f8c8d; margin-top: 5px;">Review your selected gadgets</small>
+        </h1>
+        
+        <div id="cartTable" class="gadget-cart-table"></div>
+        
+        <div class="cart-actions mt-4">
+            <a href="home.html" class="btn gadget-btn-secondary">
+                <i class="fas fa-arrow-left"></i> Continue Shopping
+            </a>
+            <button id="checkoutBtn" class="btn gadget-btn-primary">
+                <i class="fas fa-credit-card"></i> Proceed to Checkout
+            </button>
+        </div>
+    </div>
 </body>
 
 
