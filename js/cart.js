@@ -286,29 +286,175 @@ $(document).ready(function () {
         return sessionStorage.getItem('jwtToken') || '';
     }
 
-    $('#checkoutBtn').on('click', function () {
-        let cart = getCart();
-        if (!getUserId()) {
-            Swal.fire({
-                icon: 'warning',
-                text: 'You must be logged in to checkout.',
-                showConfirmButton: true
-            }).then(() => {
-                window.location.href = 'login.html';
+    // Add function to check customer profile completeness
+    function checkCustomerProfile() {
+        return new Promise((resolve, reject) => {
+            const userId = getUserId();
+            const jwtToken = getJwtToken();
+            
+            if (!userId || !jwtToken) {
+                reject('User not authenticated');
+                return;
+            }
+            
+            $.ajax({
+                type: "GET",
+                url: `${url}api/v1/customer/profile/${userId}`,
+                headers: { 'Authorization': 'Bearer ' + jwtToken },
+                success: function (response) {
+                    console.log('Customer profile response:', response);
+                    
+                    // Check if customer profile exists and has required fields
+                    if (response.success && response.customer) {
+                        const customer = response.customer;
+                        const requiredFields = ['address', 'city', 'phone'];
+                        const missingFields = [];
+                        
+                        requiredFields.forEach(field => {
+                            if (!customer[field] || customer[field].trim() === '') {
+                                missingFields.push(field);
+                            }
+                        });
+                        
+                        if (missingFields.length > 0) {
+                            reject({
+                                type: 'incomplete_profile',
+                                missingFields: missingFields,
+                                customer: customer
+                            });
+                        } else {
+                            resolve(customer);
+                        }
+                    } else {
+                        reject({
+                            type: 'no_profile',
+                            message: 'Customer profile not found'
+                        });
+                    }
+                },
+                error: function (error) {
+                    console.error('Error checking customer profile:', error);
+                    if (error.status === 404) {
+                        reject({
+                            type: 'no_profile',
+                            message: 'Customer profile not found'
+                        });
+                    } else if (error.status === 401) {
+                        reject({
+                            type: 'auth_error',
+                            message: 'Authentication failed'
+                        });
+                    } else {
+                        reject({
+                            type: 'server_error',
+                            message: 'Failed to check customer profile'
+                        });
+                    }
+                }
             });
-            return;
+        });
+    }
+
+    // Function to show profile completion modal
+    function showProfileCompletionModal(errorData) {
+        let modalContent = '';
+        let modalTitle = 'Complete Your Profile';
+        
+        if (errorData.type === 'no_profile') {
+            modalContent = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Profile Not Found</strong>
+                </div>
+                <p>You need to create a customer profile before you can checkout.</p>
+                <p>Please go to your profile page and fill out your information including:</p>
+                <ul>
+                    <li><i class="fas fa-map-marker-alt"></i> Address</li>
+                    <li><i class="fas fa-city"></i> City</li>
+                    <li><i class="fas fa-phone"></i> Phone Number</li>
+                </ul>
+            `;
+        } else if (errorData.type === 'incomplete_profile') {
+            const fieldNames = {
+                'address': 'Address',
+                'city': 'City',
+                'phone': 'Phone Number'
+            };
+            
+            modalContent = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Profile Incomplete</strong>
+                </div>
+                <p>Your customer profile is missing some required information for checkout.</p>
+                <p>Please complete the following fields:</p>
+                <ul>
+                    ${errorData.missingFields.map(field => 
+                        `<li><i class="fas fa-exclamation-circle text-danger"></i> ${fieldNames[field] || field}</li>`
+                    ).join('')}
+                </ul>
+                <p class="mt-3">You can update your profile information on the Profile page.</p>
+            `;
+        } else {
+            modalContent = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i>
+                    <strong>Error</strong>
+                </div>
+                <p>${errorData.message || 'An error occurred while checking your profile.'}</p>
+                <p>Please try again or contact support if the problem persists.</p>
+            `;
         }
-        if (cart.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                text: 'Your cart is empty.'
-            });
-            return;
-        }
+        
+        // Create and show Bootstrap modal
+        const modalHtml = `
+            <div class="modal fade" id="profileCompletionModal" tabindex="-1" role="dialog" aria-labelledby="profileCompletionModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="profileCompletionModalLabel">
+                                <i class="fas fa-user-edit"></i> ${modalTitle}
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            ${modalContent}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <a href="profile.html" class="btn btn-primary">
+                                <i class="fas fa-user-edit"></i> Go to Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        $('#profileCompletionModal').remove();
+        
+        // Add modal to body and show it
+        $('body').append(modalHtml);
+        $('#profileCompletionModal').modal('show');
+        
+        // Clean up modal when hidden
+        $('#profileCompletionModal').on('hidden.bs.modal', function () {
+            $(this).remove();
+        });
+    }
+
+    // Separate function for the actual checkout process
+    function proceedWithCheckout(cart) {
         const payload = JSON.stringify({
             user: { id: getUserId() },
             cart
         });
+        
         $.ajax({
             type: "POST",
             url: `${url}api/v1/create-order`,
@@ -320,7 +466,10 @@ $(document).ready(function () {
             success: function (data) {
                 Swal.fire({
                     icon: "success",
+                    title: "Order Created Successfully!",
                     text: data.message,
+                    timer: 3000,
+                    timerProgressBar: true
                 });
                 localStorage.removeItem('cart');
                 renderCart();
@@ -331,7 +480,7 @@ $(document).ready(function () {
                 }
             },
             error: function (error) {
-                let msg = 'An error occurred.';
+                let msg = 'An error occurred during checkout.';
                 if (error.status === 401) {
                     msg = '401 Unauthorized: Please log in again.';
                 } else if (error.status === 403) {
@@ -351,6 +500,69 @@ $(document).ready(function () {
                 });
             }
         });
+    }
+
+    $('#checkoutBtn').on('click', function () {
+        let cart = getCart();
+        
+        // Check if user is logged in
+        if (!getUserId()) {
+            Swal.fire({
+                icon: 'warning',
+                text: 'You must be logged in to checkout.',
+                showConfirmButton: true
+            }).then(() => {
+                window.location.href = 'login.html';
+            });
+            return;
+        }
+        
+        // Check if cart is empty
+        if (cart.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                text: 'Your cart is empty.'
+            });
+            return;
+        }
+        
+        // Show loading while checking profile
+        const $checkoutBtn = $(this);
+        const originalText = $checkoutBtn.html();
+        $checkoutBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Checking Profile...');
+        
+        // Check customer profile before proceeding with checkout
+        checkCustomerProfile()
+            .then((customerProfile) => {
+                console.log('Customer profile is complete:', customerProfile);
+                
+                // Reset button
+                $checkoutBtn.prop('disabled', false).html(originalText);
+                
+                // Proceed with checkout
+                proceedWithCheckout(cart);
+            })
+            .catch((error) => {
+                console.error('Customer profile check failed:', error);
+                
+                // Reset button
+                $checkoutBtn.prop('disabled', false).html(originalText);
+                
+                if (error.type === 'auth_error') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Authentication Required',
+                        text: 'Your session has expired. Please log in again.',
+                        showConfirmButton: true
+                    }).then(() => {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                    });
+                } else {
+                    // Show profile completion modal
+                    showProfileCompletionModal(error);
+                }
+            });
     });
 
     // Quantity up/down and input change handlers for cart

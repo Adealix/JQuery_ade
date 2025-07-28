@@ -3710,3 +3710,82 @@ input[type="submit"]:hover {
     object-fit: cover !important;
     flex-shrink: 0 !important;
 }
+
+/* ===== MODERN SWEETALERT STYLING FOR DELETE MODAL ===== */
+.modern-swal-popup {
+    border-radius: 20px !important;
+    border: none !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+}
+
+.modern-swal-title {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+}
+
+.modern-swal-confirm {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    padding: 12px 25px !important;
+    font-weight: 600 !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3) !important;
+}
+
+.modern-swal-confirm:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4) !important;
+}
+
+.modern-swal-cancel {
+    background: transparent !important;
+    border: 2px solid #95a5a6 !important;
+    border-radius: 25px !important;
+    padding: 10px 23px !important;
+    font-weight: 600 !important;
+    color: #95a5a6 !important;
+    transition: all 0.3s ease !important;
+}
+
+.modern-swal-cancel:hover {
+    background: #95a5a6 !important;
+    color: white !important;
+    transform: translateY(-1px) !important;
+}
+
+.modern-swal-success {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    padding: 12px 25px !important;
+    font-weight: 600 !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3) !important;
+}
+
+.modern-swal-success:hover {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4) !important;
+}
+
+.modern-swal-error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    padding: 12px 25px !important;
+    font-weight: 600 !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3) !important;
+}
+
+.modern-swal-error:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4) !important;
+}

@@ -448,54 +448,131 @@ $(document).ready(function () {
         });
     });
 
+    // Enhanced delete confirmation with SweetAlert
     $('#itable tbody').on('click', 'a.deletebtn', function (e) {
         e.preventDefault();
         var table = $('#itable').DataTable();
         var id = $(this).data('id');
         var $row = $(this).closest('tr');
-        bootbox.confirm({
-            message: "Do you want to Delete this Item?",
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
-                },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
-                }
+        var itemName = $row.find('td:eq(1)').text(); // Get item name from second column
+        
+        Swal.fire({
+            title: 'Delete Confirmation',
+            html: `
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #ff6b6b; margin-bottom: 20px;"></i>
+                    <h3 style="color: #2c3e50; margin-bottom: 15px;">Are you sure?</h3>
+                    <p style="color: #7f8c8d; font-size: 16px; margin-bottom: 10px;">
+                        You are about to delete the item:
+                    </p>
+                    <p style="color: #e74c3c; font-weight: bold; font-size: 18px; margin-bottom: 20px;">
+                        "${itemName}"
+                    </p>
+                    <p style="color: #7f8c8d; font-size: 14px;">
+                        This action cannot be undone. All data associated with this item will be permanently removed.
+                    </p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#95a5a6',
+            confirmButtonText: '<i class="fas fa-trash-alt"></i> Yes, Delete It!',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            reverseButtons: true,
+            customClass: {
+                popup: 'modern-swal-popup',
+                title: 'modern-swal-title',
+                confirmButton: 'modern-swal-confirm',
+                cancelButton: 'modern-swal-cancel'
             },
-            callback: function (result) {
-                if (result) {
-                    $.ajax({
-                        method: "DELETE",
-                        url: `${url}api/v1/items/${id}`,
-                        dataType: "json",
-                        headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
-                        success: function (data) {
-                            $row.fadeOut(400, function () {
-                                table.row($row).remove().draw();
-                            });
-                            bootbox.alert(data.message);
-                        },
-                        error: function (xhr) {
-                            let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
-                            Swal.fire({
-                              icon: 'error',
-                              title: 'Failed to delete item',
-                              text: msg
-                            }).then(() => {
-                              if (xhr.status === 401) {
+            buttonsStyling: false,
+            focusCancel: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                Swal.fire({
+                    title: 'Deleting...',
+                    html: `
+                        <div style="text-align: center; padding: 20px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                            <p style="margin-top: 15px; color: #7f8c8d;">Please wait while we delete the item...</p>
+                        </div>
+                    `,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: 'modern-swal-popup'
+                    }
+                });
+                
+                $.ajax({
+                    method: "DELETE",
+                    url: `${url}api/v1/items/${id}`,
+                    dataType: "json",
+                    headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+                    success: function (data) {
+                        $row.fadeOut(400, function () {
+                            table.row($row).remove().draw();
+                        });
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted Successfully!',
+                            html: `
+                                <div style="text-align: center; padding: 15px;">
+                                    <p style="color: #27ae60; font-size: 16px; margin-bottom: 10px;">
+                                        The item "${itemName}" has been successfully deleted.
+                                    </p>
+                                    <p style="color: #7f8c8d; font-size: 14px;">
+                                        The item has been removed from your inventory.
+                                    </p>
+                                </div>
+                            `,
+                            confirmButtonColor: '#27ae60',
+                            confirmButtonText: '<i class="fas fa-check"></i> Great!',
+                            customClass: {
+                                popup: 'modern-swal-popup',
+                                confirmButton: 'modern-swal-success'
+                            },
+                            buttonsStyling: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    },
+                    error: function (xhr) {
+                        let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Delete failed');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Delete Failed',
+                            html: `
+                                <div style="text-align: center; padding: 15px;">
+                                    <p style="color: #e74c3c; font-size: 16px; margin-bottom: 10px;">
+                                        Failed to delete the item "${itemName}".
+                                    </p>
+                                    <p style="color: #7f8c8d; font-size: 14px;">
+                                        ${msg}
+                                    </p>
+                                </div>
+                            `,
+                            confirmButtonColor: '#e74c3c',
+                            confirmButtonText: '<i class="fas fa-exclamation-triangle"></i> OK',
+                            customClass: {
+                                popup: 'modern-swal-popup',
+                                confirmButton: 'modern-swal-error'
+                            },
+                            buttonsStyling: false
+                        }).then(() => {
+                            if (xhr.status === 401) {
                                 sessionStorage.clear();
                                 window.location.href = 'login.html';
-                              }
-                            });
-                        }
-                    });
-                }
+                            }
+                        });
+                    }
+                });
             }
         });
-    })
+    });
 
     // Fix: Set modal title and buttons for Add/Edit Item
     // Use a global flag to track edit mode

@@ -210,16 +210,64 @@ $(document).ready(function () {
             dataType: "json",
             success: function (data) {
                 console.log(data);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Registration successful!',
-                    text: 'You can now log in.',
-                    confirmButtonText: 'OK'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = 'login.html';
-                    }
-                });
+                if (data.success && data.email_sent) {
+                    // Email verification flow
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Registration Successful!',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Your account has been created successfully!</strong></p>
+                                <p>📧 <strong>Please check your email</strong> and click the verification link to activate your account.</p>
+                                <ul style="margin: 15px 0; padding-left: 20px;">
+                                    <li>Check your inbox for an email from GadgetEssence</li>
+                                    <li>Click the "Verify Email Address" button in the email</li>
+                                    <li>After verification, you can log in to your account</li>
+                                </ul>
+                                <p><small><em>💡 Don't see the email? Check your spam/junk folder or click "Resend Email" on the login page.</em></small></p>
+                            </div>
+                        `,
+                        confirmButtonText: 'Go to Login',
+                        confirmButtonColor: '#667eea',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'login.html';
+                        }
+                    });
+                } else if (data.success && !data.email_sent) {
+                    // Registration successful but email failed
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Registration Successful',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Your account has been created!</strong></p>
+                                <p>⚠️ However, there was an issue sending the verification email.</p>
+                                <p>Please contact support or try to resend the verification email from the login page.</p>
+                            </div>
+                        `,
+                        confirmButtonText: 'Go to Login',
+                        confirmButtonColor: '#667eea'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'login.html';
+                        }
+                    });
+                } else {
+                    // Fallback for unexpected response
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Registration successful!',
+                        text: data.message || 'You can now log in.',
+                        confirmButtonText: 'OK'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'login.html';
+                        }
+                    });
+                }
             },
             error: function (error) {
                 let msg = 'An error occurred.';
@@ -408,21 +456,63 @@ $(document).ready(function () {
                 console.log(error);
                 let msg = 'An error occurred.';
                 let icon = 'error';
+                let showResendOption = false;
+                
                 if (error.status === 401) {
                     msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Invalid email or password.';
                 } else if (error.status === 403) {
-                    msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Your account is not active. Please contact an Administrator.';
-                    icon = 'warning';
+                    const responseData = error.responseJSON;
+                    if (responseData && responseData.email_not_verified) {
+                        // Email not verified case
+                        msg = responseData.message || 'Please verify your email address before logging in.';
+                        icon = 'warning';
+                        showResendOption = true;
+                    } else {
+                        msg = responseData && responseData.message ? responseData.message : 'Your account is not active. Please contact an Administrator.';
+                        icon = 'warning';
+                    }
                 } else if (error.responseJSON && error.responseJSON.message) {
                     msg = error.responseJSON.message;
                 }
-                Swal.fire({
-                    icon: icon,
-                    title: 'Login Failed',
-                    text: msg,
-                    showConfirmButton: true,
-                    position: "center"
-                });
+                
+                if (showResendOption) {
+                    // Show email verification error with resend option
+                    Swal.fire({
+                        icon: icon,
+                        title: 'Email Verification Required',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>${msg}</strong></p>
+                                <p>📧 Please check your email for the verification link.</p>
+                                <p><strong>Didn't receive the email?</strong></p>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    <li>Check your spam/junk folder</li>
+                                    <li>Click "Resend Verification Email" below</li>
+                                </ul>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="fas fa-envelope"></i> Resend Verification Email',
+                        cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+                        confirmButtonColor: '#667eea',
+                        cancelButtonColor: '#6c757d'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Get email from form and show resend modal
+                            const userEmail = $('#email').val();
+                            showResendVerificationModal(userEmail);
+                        }
+                    });
+                } else {
+                    // Regular error message
+                    Swal.fire({
+                        icon: icon,
+                        title: 'Login Failed',
+                        text: msg,
+                        showConfirmButton: true,
+                        position: "center"
+                    });
+                }
             }
         });
     });
@@ -1017,4 +1107,107 @@ $(document).ready(function () {
             }, 1000);
         });
     }
+    
+    // Function to show resend verification email modal
+    function showResendVerificationModal(prefillEmail = '') {
+        Swal.fire({
+            title: '<i class="fas fa-envelope"></i> Resend Verification Email',
+            html: `
+                <div style="text-align: left;">
+                    <p>Enter your email address to receive a new verification link:</p>
+                    <div class="form-group mt-3">
+                        <label for="resendEmailInput" class="form-label">Email Address:</label>
+                        <input type="email" id="resendEmailInput" class="form-control" placeholder="Enter your email" value="${prefillEmail}" required>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Make sure to check your spam/junk folder for the verification email.
+                    </small>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-paper-plane"></i> Send Email',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            confirmButtonColor: '#667eea',
+            cancelButtonColor: '#6c757d',
+            preConfirm: () => {
+                const email = document.getElementById('resendEmailInput').value;
+                if (!email) {
+                    Swal.showValidationMessage('Please enter your email address');
+                    return false;
+                }
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    Swal.showValidationMessage('Please enter a valid email address');
+                    return false;
+                }
+                return email;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const email = result.value;
+                resendVerificationEmail(email);
+            }
+        });
+    }
+    
+    // Function to resend verification email
+    function resendVerificationEmail(email) {
+        // Show loading
+        Swal.fire({
+            title: 'Sending Email...',
+            html: '<i class="fas fa-spinner fa-spin"></i> Please wait while we send your verification email.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false
+        });
+        
+        $.ajax({
+            url: `${url}api/v1/users/resend-verification`,
+            method: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({ email: email }),
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Email Sent!',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Verification email sent successfully!</strong></p>
+                                <p>📧 Please check your email inbox and click the verification link.</p>
+                                <p><small><em>💡 Don't see the email? Check your spam/junk folder.</em></small></p>
+                            </div>
+                        `,
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#667eea'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed to Send',
+                        text: response.message || 'Failed to send verification email.',
+                        confirmButtonColor: '#667eea'
+                    });
+                }
+            },
+            error: function(error) {
+                let message = 'Failed to send verification email.';
+                if (error.responseJSON && error.responseJSON.message) {
+                    message = error.responseJSON.message;
+                }
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: message,
+                    confirmButtonColor: '#667eea'
+                });
+            }
+        });
+    }
+    
+    // Make functions globally accessible
+    window.showResendVerificationModal = showResendVerificationModal;
+    window.resendVerificationEmail = resendVerificationEmail;
 })
