@@ -26,54 +26,25 @@ $(document).ready(function () {
         return;
     }
     $('#header').load('header.html');
+
+    // Custom pagination variables
+    let currentOrdersPage = 1;
+    let totalOrdersPages = 1;
+    let allOrders = [];
+    let filteredOrders = []; // For search functionality
+    let ordersPerPage = 10;
+    let currentOrdersMode = 'pagination'; // 'pagination' or 'infinite'
+    let ordersLoading = false;
+    let ordersSearchQuery = '';
+
+    // Initialize DataTable with pagination disabled
     var table = $('#ordersTable').DataTable({
-        ajax: {
-            url: `${url}api/v1/orders`,
-            dataSrc: function(json) {
-                if (json.success && Array.isArray(json.orders)) return json.orders;
-                if (json.rows) return json.rows;
-                if (Array.isArray(json)) return json;
-                if (json.data) return json.data;
-                return [];
-            },
-            error: function(xhr, error, thrown) {
-                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Failed to load orders',
-                  text: msg
-                }).then(() => {
-                  if (xhr.status === 401) {
-                    sessionStorage.clear();
-                    window.location.href = 'login.html';
-                  }
-                });
-            },
-            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
-        },
-        dom: 'frtip', // Remove 'B' to disable built-in buttons
-        // Temporarily remove buttons to avoid node errors
-        /*
-        buttons: [
-            {
-                extend: 'pdfHtml5',
-                text: '<i class="fas fa-file-pdf me-2"></i>PDF',
-                className: 'btn btn-danger btn-sm d-none', // Hide default button
-                title: 'GadgetEssence - Orders Report',
-                customize: function(doc) {
-                    doc.content[1].table.widths = ['15%', '20%', '20%', '15%', '20%', '10%'];
-                    doc.styles.tableHeader.fillColor = '#667eea';
-                    doc.styles.tableHeader.color = 'white';
-                }
-            },
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fas fa-file-excel me-2"></i>Excel',
-                className: 'btn btn-success btn-sm d-none', // Hide default button
-                title: 'GadgetEssence - Orders Report'
-            }
-        ],
-        */
+        paging: false,
+        info: false,
+        searching: false,
+        ordering: true,
+        data: [], // Start with empty data
+        dom: 'rt', // Only show table and remove search, info, etc.
         columns: [
             { data: 'order_id' },
             { data: 'date_ordered', render: function(data) { return data ? new Date(data).toLocaleDateString() : ''; } },
@@ -120,6 +91,303 @@ $(document).ready(function () {
             }}
         ]
     });
+
+    // Load all orders function
+    function loadAllOrders() {
+        ordersLoading = true;
+        $('.orders-loading').show();
+        
+        $.ajax({
+            url: `${url}api/v1/orders`,
+            method: 'GET',
+            dataType: 'json',
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+            success: function(response) {
+                let orders = [];
+                if (response.success && Array.isArray(response.orders)) {
+                    orders = response.orders;
+                } else if (response.rows) {
+                    orders = response.rows;
+                } else if (Array.isArray(response)) {
+                    orders = response;
+                } else if (response.data) {
+                    orders = response.data;
+                }
+                
+                allOrders = orders;
+                filteredOrders = allOrders; // Initialize filtered data
+                totalOrdersPages = Math.ceil(filteredOrders.length / ordersPerPage);
+                
+                if (currentOrdersMode === 'pagination') {
+                    loadOrdersPage(1);
+                    setupOrdersPaginationControls();
+                } else {
+                    loadOrdersInfiniteScroll(1);
+                }
+            },
+            error: function(xhr, error, thrown) {
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to load orders',
+                    text: msg
+                }).then(() => {
+                    if (xhr.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                    }
+                });
+            },
+            complete: function() {
+                ordersLoading = false;
+                $('.orders-loading').hide();
+            }
+        });
+    }
+
+    // Load specific page for pagination mode
+    function loadOrdersPage(page) {
+        if (page < 1 || page > totalOrdersPages) return;
+        
+        currentOrdersPage = page;
+        const startIndex = (page - 1) * ordersPerPage;
+        const endIndex = startIndex + ordersPerPage;
+        const pageData = filteredOrders.slice(startIndex, endIndex);
+        
+        // Clear and add new data to DataTable
+        table.clear();
+        table.rows.add(pageData);
+        table.draw();
+        
+        updateOrdersPaginationButtons();
+    }
+
+    // Load orders for infinite scroll mode
+    function loadOrdersInfiniteScroll(page, append = false) {
+        const startIndex = (page - 1) * ordersPerPage;
+        const endIndex = startIndex + ordersPerPage;
+        const pageData = filteredOrders.slice(startIndex, endIndex);
+        
+        if (!append) {
+            table.clear();
+        }
+        
+        table.rows.add(pageData);
+        table.draw();
+    }
+
+    // Setup pagination controls
+    function setupOrdersPaginationControls() {
+        const paginationContainer = $('#ordersPaginationContainer');
+        if (paginationContainer.length === 0) {
+            // Create pagination container if it doesn't exist
+            $('#ordersTable_wrapper').after(`
+                <div id="ordersPaginationContainer" class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="pagination-info">
+                            <span id="ordersPageInfo"></span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="prevOrdersPage">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+                            <span class="mx-3">
+                                Page <span id="currentOrdersPage"></span> of <span id="totalOrdersPages"></span>
+                            </span>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="nextOrdersPage">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // Bind pagination events
+            $('#prevOrdersPage').on('click', function() {
+                if (currentOrdersPage > 1) {
+                    loadOrdersPage(currentOrdersPage - 1);
+                }
+            });
+            
+            $('#nextOrdersPage').on('click', function() {
+                if (currentOrdersPage < totalOrdersPages) {
+                    loadOrdersPage(currentOrdersPage + 1);
+                }
+            });
+        }
+        
+        updateOrdersPaginationButtons();
+    }
+
+    // Update pagination button states
+    function updateOrdersPaginationButtons() {
+        $('#currentOrdersPage').text(currentOrdersPage);
+        $('#totalOrdersPages').text(totalOrdersPages);
+        
+        const startItem = ((currentOrdersPage - 1) * ordersPerPage) + 1;
+        const endItem = Math.min(currentOrdersPage * ordersPerPage, filteredOrders.length);
+        $('#ordersPageInfo').text(`Showing ${startItem} to ${endItem} of ${filteredOrders.length} orders`);
+        
+        $('#prevOrdersPage').prop('disabled', currentOrdersPage <= 1);
+        $('#nextOrdersPage').prop('disabled', currentOrdersPage >= totalOrdersPages);
+    }
+
+    // Setup infinite scroll
+    function setupOrdersInfiniteScroll() {
+        let loadedPages = 1;
+        
+        $(window).on('scroll.ordersInfinite', function() {
+            if (ordersLoading || currentOrdersMode !== 'infinite') return;
+            
+            const scrollTop = $(window).scrollTop();
+            const windowHeight = $(window).height();
+            const documentHeight = $(document).height();
+            
+            // Load more when near bottom (100px threshold)
+            if (scrollTop + windowHeight >= documentHeight - 100) {
+                const nextPage = loadedPages + 1;
+                const maxPages = Math.ceil(filteredOrders.length / ordersPerPage);
+                
+                if (nextPage <= maxPages) {
+                    ordersLoading = true;
+                    
+                    // Add loading indicator
+                    if ($('#ordersInfiniteLoading').length === 0) {
+                        $('#ordersTable_wrapper').after(`
+                            <div id="ordersInfiniteLoading" class="text-center mt-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading more orders...
+                            </div>
+                        `);
+                    } else {
+                        $('#ordersInfiniteLoading').show();
+                    }
+                    
+                    setTimeout(() => {
+                        loadOrdersInfiniteScroll(nextPage, true);
+                        loadedPages = nextPage;
+                        ordersLoading = false;
+                        $('#ordersInfiniteLoading').hide();
+                    }, 500);
+                }
+            }
+        });
+    }
+
+    // Setup mode switching controls
+    function setupOrdersModeControls() {
+        if ($('#ordersModeContainer').length === 0) {
+            $('#ordersTable_wrapper').before(`
+                <div id="ordersModeContainer" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="orders-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading orders...
+                        </div>
+                        <div class="mode-controls">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="ordersPaginationModeBtn" data-mode="pagination">
+                                    <i class="fas fa-th-large"></i> Pagination
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="ordersInfiniteScrollModeBtn" data-mode="infinite">
+                                    <i class="fas fa-list"></i> Infinite Scroll
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="search-container">
+                            <div class="input-group" style="width: 300px;">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="ordersSearchInput" placeholder="Search orders by ID, status, or customer name...">
+                                <button class="btn btn-outline-secondary" type="button" id="clearOrdersSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // Bind mode switching events
+            $('#ordersPaginationModeBtn, #ordersInfiniteScrollModeBtn').on('click', function() {
+                const newMode = $(this).data('mode');
+                if (newMode === currentOrdersMode) return;
+                
+                // Update button states
+                $('#ordersModeContainer .btn-group .btn').removeClass('active');
+                $(this).addClass('active');
+                
+                // Switch mode
+                currentOrdersMode = newMode;
+                
+                if (currentOrdersMode === 'pagination') {
+                    // Disable infinite scroll
+                    $(window).off('scroll.ordersInfinite');
+                    $('#ordersInfiniteLoading').hide();
+                    $('#ordersPaginationContainer').show();
+                    
+                    // Load pagination
+                    loadOrdersPage(1);
+                    setupOrdersPaginationControls();
+                } else {
+                    // Enable infinite scroll
+                    $('#ordersPaginationContainer').hide();
+                    loadOrdersInfiniteScroll(1);
+                    setupOrdersInfiniteScroll();
+                }
+            });
+
+            // Search functionality
+            $('#ordersSearchInput').on('input', function() {
+                ordersSearchQuery = $(this).val().toLowerCase().trim();
+                filterOrders();
+            });
+
+            // Clear search
+            $('#clearOrdersSearch').on('click', function() {
+                $('#ordersSearchInput').val('');
+                ordersSearchQuery = '';
+                filterOrders();
+            });
+        }
+    }
+
+    // Filter orders based on search query
+    function filterOrders() {
+        if (!ordersSearchQuery) {
+            filteredOrders = allOrders;
+        } else {
+            filteredOrders = allOrders.filter(order => {
+                const customerName = (order.last_name || '') + (order.first_name ? ', ' + order.first_name : '') || order.customer_id || '';
+                return (
+                    (order.order_id && order.order_id.toString().includes(ordersSearchQuery)) ||
+                    (order.status && order.status.toLowerCase().includes(ordersSearchQuery)) ||
+                    (customerName && customerName.toLowerCase().includes(ordersSearchQuery)) ||
+                    (order.customer_id && order.customer_id.toString().includes(ordersSearchQuery))
+                );
+            });
+        }
+
+        // Update pagination
+        totalOrdersPages = Math.ceil(filteredOrders.length / ordersPerPage);
+        currentOrdersPage = 1; // Reset to first page
+
+        // Reload current view
+        if (currentOrdersMode === 'pagination') {
+            loadOrdersPage(1);
+            updateOrdersPaginationButtons();
+        } else {
+            // Reset infinite scroll
+            $(window).off('scroll.ordersInfinite');
+            loadOrdersInfiniteScroll(1);
+            setupOrdersInfiniteScroll();
+        }
+    }
+
+    // Initialize
+    setupOrdersModeControls();
+    loadAllOrders();
     // Edit status button
     $('#ordersTable tbody').on('click', 'a.editStatusBtn', function (e) {
         e.preventDefault();
@@ -254,7 +522,8 @@ $(document).ready(function () {
                         }
                     });
                 }
-                table.ajax.reload();
+                // Reload data instead of using DataTable's ajax.reload
+                loadAllOrders();
             },
             error: function (xhr, textStatus, errorThrown) {
                 Swal.close(); // Close the loading spinner
@@ -340,7 +609,8 @@ $(document).ready(function () {
                     headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
                     success: function (data) {
                         Swal.fire({ icon: 'success', title: 'Order deleted!' });
-                        table.ajax.reload();
+                        // Reload data instead of using DataTable's ajax.reload
+                        loadAllOrders();
                     },
                     error: function (xhr) {
                         let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Delete failed');
@@ -414,10 +684,8 @@ $(document).ready(function () {
     
     // Custom Export Functions
     function exportOrdersToPDF() {
-        // Get all data from the DataTable
-        var data = table.rows().data().toArray();
-        
-        if (data.length === 0) {
+        // Use allOrders array instead of DataTable data
+        if (allOrders.length === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'No Data',
@@ -441,7 +709,7 @@ $(document).ready(function () {
                         widths: ['15%', '20%', '20%', '15%', '25%', '5%'],
                         body: [
                             ['Order ID', 'Date Ordered', 'Date Delivery', 'Status', 'Customer', 'Actions'],
-                            ...data.map(order => [
+                            ...allOrders.map(order => [
                                 order.order_id || '',
                                 order.date_ordered ? new Date(order.date_ordered).toLocaleDateString() : '',
                                 order.date_delivery ? new Date(order.date_delivery).toLocaleDateString() : '',
@@ -469,10 +737,8 @@ $(document).ready(function () {
     }
     
     function exportOrdersToExcel() {
-        // Get all data from the DataTable
-        var data = table.rows().data().toArray();
-        
-        if (data.length === 0) {
+        // Use allOrders array instead of DataTable data
+        if (allOrders.length === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'No Data',
@@ -485,7 +751,7 @@ $(document).ready(function () {
         var csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "Order ID,Date Ordered,Date Delivery,Status,Customer\n";
         
-        data.forEach(order => {
+        allOrders.forEach(order => {
             var customerName = (order.last_name || '') + (order.first_name ? ', ' + order.first_name : '') || order.customer_id || '';
             var row = [
                 order.order_id || '',

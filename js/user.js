@@ -733,48 +733,25 @@ $(document).ready(function () {
             });
             return;
         }
+
+        // Custom pagination variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let allUsers = [];
+        let filteredUsers = []; // For search functionality
+        let itemsPerPage = 10;
+        let currentMode = 'pagination'; // 'pagination' or 'infinite'
+        let loading = false;
+        let searchQuery = '';
+
+        // Initialize DataTable with pagination disabled
         var table = $('#utable').DataTable({
-            ajax: {
-                url: `${url}api/v1/users/customers?all=true`,
-                dataSrc: 'users',
-                error: function(xhr, error, thrown) {
-                    let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
-                    Swal.fire({
-                      icon: 'error',
-                      title: 'Failed to load users',
-                      text: msg
-                    }).then(() => {
-                      if (xhr.status === 401) {
-                        sessionStorage.clear();
-                        window.location.href = 'login.html';
-                      }
-                    });
-                },
-                headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
-            },
-            dom: 'frtip', // Remove 'B' to disable built-in buttons
-            // Temporarily remove buttons to avoid node errors
-            /*
-            buttons: [
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf me-2"></i>PDF',
-                    className: 'btn btn-danger btn-sm d-none', // Hide default button
-                    title: 'GadgetEssence - Users Report',
-                    customize: function(doc) {
-                        doc.content[1].table.widths = ['15%', '25%', '20%', '20%', '10%', '10%'];
-                        doc.styles.tableHeader.fillColor = '#667eea';
-                        doc.styles.tableHeader.color = 'white';
-                    }
-                },
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel me-2"></i>Excel',
-                    className: 'btn btn-success btn-sm d-none', // Hide default button
-                    title: 'GadgetEssence - Users Report'
-                }
-            ],
-            */
+            paging: false,
+            info: false,
+            searching: false,
+            ordering: true,
+            data: [], // Start with empty data
+            dom: 'rt', // Only show table and remove search, info, etc.
             columns: [
                 {
                     data: 'image_path',
@@ -869,6 +846,294 @@ $(document).ready(function () {
             ]
         });
 
+        // Load all users function
+        function loadAllUsers() {
+            loading = true;
+            $('.users-loading').show();
+            
+            $.ajax({
+                url: `${url}api/v1/users/customers?all=true`,
+                method: 'GET',
+                dataType: 'json',
+                headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+                success: function(response) {
+                    if (response.success && response.users) {
+                        allUsers = response.users;
+                        filteredUsers = allUsers; // Initialize filtered data
+                        totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+                        
+                        if (currentMode === 'pagination') {
+                            loadUsersPage(1);
+                            setupPaginationControls();
+                        } else {
+                            loadUsersInfiniteScroll(1);
+                        }
+                    }
+                },
+                error: function(xhr, error, thrown) {
+                    let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed to load users',
+                        text: msg
+                    }).then(() => {
+                        if (xhr.status === 401) {
+                            sessionStorage.clear();
+                            window.location.href = 'login.html';
+                        }
+                    });
+                },
+                complete: function() {
+                    loading = false;
+                    $('.users-loading').hide();
+                }
+            });
+        }
+
+        // Load specific page for pagination mode
+        function loadUsersPage(page) {
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = filteredUsers.slice(startIndex, endIndex);
+            
+            // Clear and add new data to DataTable
+            table.clear();
+            table.rows.add(pageData);
+            table.draw();
+            
+            updatePaginationButtons();
+        }
+
+        // Load users for infinite scroll mode
+        function loadUsersInfiniteScroll(page, append = false) {
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = filteredUsers.slice(startIndex, endIndex);
+            
+            if (!append) {
+                table.clear();
+            }
+            
+            table.rows.add(pageData);
+            table.draw();
+        }
+
+        // Setup pagination controls
+        function setupPaginationControls() {
+            const paginationContainer = $('#usersPaginationContainer');
+            if (paginationContainer.length === 0) {
+                // Create pagination container if it doesn't exist
+                $('#utable_wrapper').after(`
+                    <div id="usersPaginationContainer" class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="pagination-info">
+                                <span id="usersPageInfo"></span>
+                            </div>
+                            <div class="pagination-controls">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="prevUsersPage">
+                                    <i class="fas fa-chevron-left"></i> Previous
+                                </button>
+                                <span class="mx-3">
+                                    Page <span id="currentUsersPage"></span> of <span id="totalUsersPages"></span>
+                                </span>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="nextUsersPage">
+                                    Next <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                // Bind pagination events
+                $('#prevUsersPage').on('click', function() {
+                    if (currentPage > 1) {
+                        loadUsersPage(currentPage - 1);
+                    }
+                });
+                
+                $('#nextUsersPage').on('click', function() {
+                    if (currentPage < totalPages) {
+                        loadUsersPage(currentPage + 1);
+                    }
+                });
+            }
+            
+            updatePaginationButtons();
+        }
+
+        // Update pagination button states
+        function updatePaginationButtons() {
+            $('#currentUsersPage').text(currentPage);
+            $('#totalUsersPages').text(totalPages);
+            
+            const startItem = ((currentPage - 1) * itemsPerPage) + 1;
+            const endItem = Math.min(currentPage * itemsPerPage, filteredUsers.length);
+            $('#usersPageInfo').text(`Showing ${startItem} to ${endItem} of ${filteredUsers.length} users`);
+            
+            $('#prevUsersPage').prop('disabled', currentPage <= 1);
+            $('#nextUsersPage').prop('disabled', currentPage >= totalPages);
+        }
+
+        // Setup infinite scroll
+        function setupInfiniteScroll() {
+            let loadedPages = 1;
+            
+            $(window).on('scroll.usersInfinite', function() {
+                if (loading || currentMode !== 'infinite') return;
+                
+                const scrollTop = $(window).scrollTop();
+                const windowHeight = $(window).height();
+                const documentHeight = $(document).height();
+                
+                // Load more when near bottom (100px threshold)
+                if (scrollTop + windowHeight >= documentHeight - 100) {
+                    const nextPage = loadedPages + 1;
+                    const maxPages = Math.ceil(filteredUsers.length / itemsPerPage);
+                    
+                    if (nextPage <= maxPages) {
+                        loading = true;
+                        
+                        // Add loading indicator
+                        if ($('#usersInfiniteLoading').length === 0) {
+                            $('#utable_wrapper').after(`
+                                <div id="usersInfiniteLoading" class="text-center mt-3">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading more users...
+                                </div>
+                            `);
+                        } else {
+                            $('#usersInfiniteLoading').show();
+                        }
+                        
+                        setTimeout(() => {
+                            loadUsersInfiniteScroll(nextPage, true);
+                            loadedPages = nextPage;
+                            loading = false;
+                            $('#usersInfiniteLoading').hide();
+                        }, 500);
+                    }
+                }
+            });
+        }
+
+        // Setup mode switching controls
+        function setupModeControls() {
+            if ($('#usersModeContainer').length === 0) {
+                $('#utable_wrapper').before(`
+                    <div id="usersModeContainer" class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="users-loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading users...
+                            </div>
+                            <div class="mode-controls">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary active" id="paginationModeBtn" data-mode="pagination">
+                                        <i class="fas fa-th-large"></i> Pagination
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="infiniteScrollModeBtn" data-mode="infinite">
+                                        <i class="fas fa-list"></i> Infinite Scroll
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="search-container">
+                                <div class="input-group" style="width: 300px;">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="usersSearchInput" placeholder="Search users by name, email, status, or role...">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearUsersSearch">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                // Bind mode switching events
+                $('#paginationModeBtn, #infiniteScrollModeBtn').on('click', function() {
+                    const newMode = $(this).data('mode');
+                    if (newMode === currentMode) return;
+                    
+                    // Update button states
+                    $('.btn-group .btn').removeClass('active');
+                    $(this).addClass('active');
+                    
+                    // Switch mode
+                    currentMode = newMode;
+                    
+                    if (currentMode === 'pagination') {
+                        // Disable infinite scroll
+                        $(window).off('scroll.usersInfinite');
+                        $('#usersInfiniteLoading').hide();
+                        $('#usersPaginationContainer').show();
+                        
+                        // Load pagination
+                        loadUsersPage(1);
+                        setupPaginationControls();
+                    } else {
+                        // Enable infinite scroll
+                        $('#usersPaginationContainer').hide();
+                        loadUsersInfiniteScroll(1);
+                        setupInfiniteScroll();
+                    }
+                });
+
+                // Search functionality
+                $('#usersSearchInput').on('input', function() {
+                    searchQuery = $(this).val().toLowerCase().trim();
+                    filterUsers();
+                });
+
+                // Clear search
+                $('#clearUsersSearch').on('click', function() {
+                    $('#usersSearchInput').val('');
+                    searchQuery = '';
+                    filterUsers();
+                });
+            }
+        }
+
+        // Filter users based on search query
+        function filterUsers() {
+            if (!searchQuery) {
+                filteredUsers = allUsers;
+            } else {
+                filteredUsers = allUsers.filter(user => {
+                    return (
+                        (user.email && user.email.toLowerCase().includes(searchQuery)) ||
+                        (user.first_name && user.first_name.toLowerCase().includes(searchQuery)) ||
+                        (user.last_name && user.last_name.toLowerCase().includes(searchQuery)) ||
+                        (user.status && user.status.toLowerCase().includes(searchQuery)) ||
+                        (user.role && user.role.toLowerCase().includes(searchQuery))
+                    );
+                });
+            }
+
+            // Update pagination
+            totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+            currentPage = 1; // Reset to first page
+
+            // Reload current view
+            if (currentMode === 'pagination') {
+                loadUsersPage(1);
+                updatePaginationButtons();
+            } else {
+                // Reset infinite scroll
+                $(window).off('scroll.usersInfinite');
+                loadUsersInfiniteScroll(1);
+                setupInfiniteScroll();
+            }
+        }
+
+        // Initialize
+        setupModeControls();
+        loadAllUsers();
+
         // Edit button handler
         $('#utable tbody').on('click', 'a.editBtn', function (e) {
             e.preventDefault();
@@ -910,7 +1175,8 @@ $(document).ready(function () {
                       title: 'Success',
                       text: 'User updated successfully!'
                     });
-                    table.ajax.reload();
+                    // Reload data instead of using DataTable's ajax.reload
+                    loadAllUsers();
                 },
                 error: function (xhr) {
                     let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Update failed');
@@ -946,7 +1212,8 @@ $(document).ready(function () {
                             dataType: 'json',
                             headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
                             success: function (data) {
-                                table.ajax.reload();
+                                // Reload data instead of using DataTable's ajax.reload
+                                loadAllUsers();
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'User Deleted',
@@ -979,10 +1246,8 @@ $(document).ready(function () {
         
         // Custom Export Functions
         function exportUsersToPDF() {
-            // Get all data from the DataTable
-            var data = table.rows().data().toArray();
-            
-            if (data.length === 0) {
+            // Use allUsers array instead of DataTable data
+            if (allUsers.length === 0) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'No Data',
@@ -1006,7 +1271,7 @@ $(document).ready(function () {
                             widths: ['25%', '20%', '20%', '15%', '10%', '10%'],
                             body: [
                                 ['Email', 'Last Name', 'First Name', 'Status', 'Role', 'Avatar'],
-                                ...data.map(user => [
+                                ...allUsers.map(user => [
                                     user.email || '',
                                     user.last_name || '',
                                     user.first_name || '',
@@ -1034,10 +1299,8 @@ $(document).ready(function () {
         }
         
         function exportUsersToExcel() {
-            // Get all data from the DataTable
-            var data = table.rows().data().toArray();
-            
-            if (data.length === 0) {
+            // Use allUsers array instead of DataTable data
+            if (allUsers.length === 0) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'No Data',
@@ -1050,7 +1313,7 @@ $(document).ready(function () {
             var csvContent = "data:text/csv;charset=utf-8,";
             csvContent += "Email,Last Name,First Name,Status,Role,Avatar\n";
             
-            data.forEach(user => {
+            allUsers.forEach(user => {
                 var row = [
                     user.email || '',
                     (user.last_name || '').replace(/"/g, '""'), // Escape quotes

@@ -30,87 +30,24 @@ $(document).ready(function () {
         return;
     }
 
+    // Custom pagination variables
+    let currentItemsPage = 1;
+    let totalItemsPages = 1;
+    let allItems = [];
+    let filteredItems = []; // For search functionality
+    let itemsPerPage = 10;
+    let currentItemsMode = 'pagination'; // 'pagination' or 'infinite'
+    let itemsLoading = false;
+    let itemsSearchQuery = '';
+
+    // Initialize DataTable with pagination disabled
     var table = $('#itable').DataTable({
-        ajax: {
-            url: `${url}api/v1/items?all=true`, // Admin: fetch all items
-            dataSrc: function(json) {
-                // Backend returns {success: true, items: [...]} for all items
-                if (json.success && Array.isArray(json.items)) return json.items;
-                if (json.rows) return json.rows;
-                if (Array.isArray(json)) return json;
-                if (json.data) return json.data;
-                return [];
-            },
-            error: function(xhr, error, thrown) {
-                console.error('DataTable AJAX error:', error, thrown, xhr.responseText);
-                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Failed to load items',
-                  text: msg
-                }).then(() => {
-                  if (xhr.status === 401) {
-                    sessionStorage.clear();
-                    window.location.href = 'login.html';
-                  }
-                });
-            },
-            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {}
-        },
-        dom: 'frtip', // Remove 'B' to disable built-in buttons
-        // Temporarily remove buttons to avoid node errors
-        /*
-        buttons: [
-            {
-                extend: 'pdfHtml5',
-                text: '<i class="fas fa-file-pdf me-2"></i>PDF',
-                className: 'btn btn-danger btn-sm d-none', // Hide default button
-                title: 'GadgetEssence - Items Report',
-                exportOptions: {
-                    columns: [0, 1, 2, 4, 5, 6, 7, 8], // Export specific columns: ID, Name, Category, Description, Sell Price, Cost Price, Show Item, Quantity
-                    modifier: {
-                        page: 'all',
-                        search: 'none'
-                    }
-                },
-                customize: function(doc) {
-                    // Set column widths for 8 columns (excluding Images and Action columns via no-export class)
-                    doc.content[1].table.widths = ['10%', '20%', '15%', '25%', '12%', '12%', '8%', '8%'];
-                    
-                    // Update column headers to match exported columns
-                    if (doc.content[1].table.body && doc.content[1].table.body[0]) {
-                        doc.content[1].table.body[0] = ['ID', 'Name', 'Category', 'Description', 'Sell Price', 'Cost Price', 'Show Item', 'Quantity'];
-                    }
-                    
-                    doc.styles.tableHeader.fillColor = '#667eea';
-                    doc.styles.tableHeader.color = 'white';
-                    doc.styles.tableHeader.fontSize = 10;
-                    doc.styles.tableBodyEven.fontSize = 9;
-                    doc.styles.tableBodyOdd.fontSize = 9;
-                    
-                    // Add custom styling
-                    doc.defaultStyle.fontSize = 9;
-                    doc.content[0].text = 'GadgetEssence - Items Report';
-                    doc.content[0].fontSize = 16;
-                    doc.content[0].alignment = 'center';
-                    doc.content[0].margin = [0, 0, 0, 20];
-                }
-            },
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fas fa-file-excel me-2"></i>Excel',
-                className: 'btn btn-success btn-sm d-none', // Hide default button
-                title: 'GadgetEssence - Items Report',
-                exportOptions: {
-                    columns: [0, 1, 2, 4, 5, 6, 7, 8], // Export specific columns: ID, Name, Category, Description, Sell Price, Cost Price, Show Item, Quantity
-                    modifier: {
-                        page: 'all',
-                        search: 'none'
-                    }
-                }
-            }
-        ],
-        */
+        paging: false,
+        info: false,
+        searching: false,
+        ordering: true,
+        data: [], // Start with empty data
+        dom: 'rt', // Only show table and remove search, info, etc.
         columns: [
             { 
                 data: 'item_id', 
@@ -197,6 +134,306 @@ $(document).ready(function () {
             });
         }
     });
+
+    // Load all items function
+    function loadAllItems() {
+        itemsLoading = true;
+        $('.items-loading').show();
+        
+        $.ajax({
+            url: `${url}api/v1/items?all=true`,
+            method: 'GET',
+            dataType: 'json',
+            headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
+            success: function(response) {
+                // Backend returns {success: true, items: [...]} for all items
+                let items = [];
+                if (response.success && Array.isArray(response.items)) {
+                    items = response.items;
+                } else if (response.rows) {
+                    items = response.rows;
+                } else if (Array.isArray(response)) {
+                    items = response;
+                } else if (response.data) {
+                    items = response.data;
+                }
+                
+                allItems = items;
+                filteredItems = allItems; // Initialize filtered data
+                totalItemsPages = Math.ceil(filteredItems.length / itemsPerPage);
+                
+                if (currentItemsMode === 'pagination') {
+                    loadItemsPage(1);
+                    setupItemsPaginationControls();
+                } else {
+                    loadItemsInfiniteScroll(1);
+                }
+            },
+            error: function(xhr, error, thrown) {
+                console.error('Items AJAX error:', error, thrown, xhr.responseText);
+                let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to load items',
+                    text: msg
+                }).then(() => {
+                    if (xhr.status === 401) {
+                        sessionStorage.clear();
+                        window.location.href = 'login.html';
+                    }
+                });
+            },
+            complete: function() {
+                itemsLoading = false;
+                $('.items-loading').hide();
+            }
+        });
+    }
+
+    // Load specific page for pagination mode
+    function loadItemsPage(page) {
+        if (page < 1 || page > totalItemsPages) return;
+        
+        currentItemsPage = page;
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredItems.slice(startIndex, endIndex);
+        
+        // Clear and add new data to DataTable
+        table.clear();
+        table.rows.add(pageData);
+        table.draw();
+        
+        updateItemsPaginationButtons();
+    }
+
+    // Load items for infinite scroll mode
+    function loadItemsInfiniteScroll(page, append = false) {
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredItems.slice(startIndex, endIndex);
+        
+        if (!append) {
+            table.clear();
+        }
+        
+        table.rows.add(pageData);
+        table.draw();
+    }
+
+    // Setup pagination controls
+    function setupItemsPaginationControls() {
+        const paginationContainer = $('#itemsPaginationContainer');
+        if (paginationContainer.length === 0) {
+            // Create pagination container if it doesn't exist
+            $('#itable_wrapper').after(`
+                <div id="itemsPaginationContainer" class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="pagination-info">
+                            <span id="itemsPageInfo"></span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="prevItemsPage">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+                            <span class="mx-3">
+                                Page <span id="currentItemsPage"></span> of <span id="totalItemsPages"></span>
+                            </span>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="nextItemsPage">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // Bind pagination events
+            $('#prevItemsPage').on('click', function() {
+                if (currentItemsPage > 1) {
+                    loadItemsPage(currentItemsPage - 1);
+                }
+            });
+            
+            $('#nextItemsPage').on('click', function() {
+                if (currentItemsPage < totalItemsPages) {
+                    loadItemsPage(currentItemsPage + 1);
+                }
+            });
+        }
+        
+        updateItemsPaginationButtons();
+    }
+
+    // Update pagination button states
+    function updateItemsPaginationButtons() {
+        $('#currentItemsPage').text(currentItemsPage);
+        $('#totalItemsPages').text(totalItemsPages);
+        
+        const startItem = ((currentItemsPage - 1) * itemsPerPage) + 1;
+        const endItem = Math.min(currentItemsPage * itemsPerPage, filteredItems.length);
+        $('#itemsPageInfo').text(`Showing ${startItem} to ${endItem} of ${filteredItems.length} items`);
+        
+        $('#prevItemsPage').prop('disabled', currentItemsPage <= 1);
+        $('#nextItemsPage').prop('disabled', currentItemsPage >= totalItemsPages);
+    }
+
+    // Setup infinite scroll
+    function setupItemsInfiniteScroll() {
+        let loadedPages = 1;
+        
+        $(window).on('scroll.itemsInfinite', function() {
+            if (itemsLoading || currentItemsMode !== 'infinite') return;
+            
+            const scrollTop = $(window).scrollTop();
+            const windowHeight = $(window).height();
+            const documentHeight = $(document).height();
+            
+            // Load more when near bottom (100px threshold)
+            if (scrollTop + windowHeight >= documentHeight - 100) {
+                const nextPage = loadedPages + 1;
+                const maxPages = Math.ceil(filteredItems.length / itemsPerPage);
+                
+                if (nextPage <= maxPages) {
+                    itemsLoading = true;
+                    
+                    // Add loading indicator
+                    if ($('#itemsInfiniteLoading').length === 0) {
+                        $('#itable_wrapper').after(`
+                            <div id="itemsInfiniteLoading" class="text-center mt-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading more items...
+                            </div>
+                        `);
+                    } else {
+                        $('#itemsInfiniteLoading').show();
+                    }
+                    
+                    setTimeout(() => {
+                        loadItemsInfiniteScroll(nextPage, true);
+                        loadedPages = nextPage;
+                        itemsLoading = false;
+                        $('#itemsInfiniteLoading').hide();
+                    }, 500);
+                }
+            }
+        });
+    }
+
+    // Setup mode switching controls
+    function setupItemsModeControls() {
+        if ($('#itemsModeContainer').length === 0) {
+            $('#itable_wrapper').before(`
+                <div id="itemsModeContainer" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="items-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading items...
+                        </div>
+                        <div class="mode-controls">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="itemsPaginationModeBtn" data-mode="pagination">
+                                    <i class="fas fa-th-large"></i> Pagination
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="itemsInfiniteScrollModeBtn" data-mode="infinite">
+                                    <i class="fas fa-list"></i> Infinite Scroll
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="search-container">
+                            <div class="input-group" style="width: 300px;">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="itemsSearchInput" placeholder="Search items by name, category, or description...">
+                                <button class="btn btn-outline-secondary" type="button" id="clearItemsSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // Bind mode switching events
+            $('#itemsPaginationModeBtn, #itemsInfiniteScrollModeBtn').on('click', function() {
+                const newMode = $(this).data('mode');
+                if (newMode === currentItemsMode) return;
+                
+                // Update button states
+                $('#itemsModeContainer .btn-group .btn').removeClass('active');
+                $(this).addClass('active');
+                
+                // Switch mode
+                currentItemsMode = newMode;
+                
+                if (currentItemsMode === 'pagination') {
+                    // Disable infinite scroll
+                    $(window).off('scroll.itemsInfinite');
+                    $('#itemsInfiniteLoading').hide();
+                    $('#itemsPaginationContainer').show();
+                    
+                    // Load pagination
+                    loadItemsPage(1);
+                    setupItemsPaginationControls();
+                } else {
+                    // Enable infinite scroll
+                    $('#itemsPaginationContainer').hide();
+                    loadItemsInfiniteScroll(1);
+                    setupItemsInfiniteScroll();
+                }
+            });
+
+            // Search functionality
+            $('#itemsSearchInput').on('input', function() {
+                itemsSearchQuery = $(this).val().toLowerCase().trim();
+                filterItems();
+            });
+
+            // Clear search
+            $('#clearItemsSearch').on('click', function() {
+                $('#itemsSearchInput').val('');
+                itemsSearchQuery = '';
+                filterItems();
+            });
+        }
+    }
+
+    // Filter items based on search query
+    function filterItems() {
+        if (!itemsSearchQuery) {
+            filteredItems = allItems;
+        } else {
+            filteredItems = allItems.filter(item => {
+                return (
+                    (item.name && item.name.toLowerCase().includes(itemsSearchQuery)) ||
+                    (item.category && item.category.toLowerCase().includes(itemsSearchQuery)) ||
+                    (item.description && item.description.toLowerCase().includes(itemsSearchQuery)) ||
+                    (item.item_id && item.item_id.toString().includes(itemsSearchQuery)) ||
+                    (item.sell_price && item.sell_price.toString().includes(itemsSearchQuery)) ||
+                    (item.show_item && item.show_item.toLowerCase().includes(itemsSearchQuery))
+                );
+            });
+        }
+
+        // Update pagination
+        totalItemsPages = Math.ceil(filteredItems.length / itemsPerPage);
+        currentItemsPage = 1; // Reset to first page
+
+        // Reload current view
+        if (currentItemsMode === 'pagination') {
+            loadItemsPage(1);
+            updateItemsPaginationButtons();
+        } else {
+            // Reset infinite scroll
+            $(window).off('scroll.itemsInfinite');
+            loadItemsInfiniteScroll(1);
+            setupItemsInfiniteScroll();
+        }
+    }
+
+    // Initialize
+    setupItemsModeControls();
+    loadAllItems();
 
     // Enhanced validation for item form with inline error display
     function clearInlineErrors() {
@@ -329,8 +566,8 @@ $(document).ready(function () {
                   title: 'Success',
                   text: 'Item added successfully!'
                 });
-                var $itable = $('#itable').DataTable();
-                $itable.ajax.reload()
+                // Reload data instead of using DataTable's ajax.reload
+                loadAllItems();
             },
             error: function (xhr) {
                 let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Create failed');
@@ -430,7 +667,8 @@ $(document).ready(function () {
                   title: 'Success',
                   text: 'Item updated successfully!'
                 });
-                table.ajax.reload()
+                // Reload data instead of using DataTable's ajax.reload
+                loadAllItems();
             },
             error: function (xhr) {
                 let msg = xhr.status === 401 ? '401 Unauthorized: You are not authorized. Please log in again.' : (xhr.responseText || 'Update failed');
@@ -513,7 +751,8 @@ $(document).ready(function () {
                     headers: jwtToken ? { 'Authorization': 'Bearer ' + jwtToken } : {},
                     success: function (data) {
                         $row.fadeOut(400, function () {
-                            table.row($row).remove().draw();
+                            // Reload data instead of using DataTable row removal
+                            loadAllItems();
                         });
                         
                         Swal.fire({
@@ -621,10 +860,8 @@ $(document).ready(function () {
     
     // Custom Export Functions
     function exportToPDF() {
-        // Get all data from the DataTable
-        var data = table.rows().data().toArray();
-        
-        if (data.length === 0) {
+        // Use allItems array instead of DataTable data
+        if (allItems.length === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'No Data',
@@ -648,7 +885,7 @@ $(document).ready(function () {
                         widths: ['10%', '20%', '15%', '25%', '12%', '12%', '8%', '8%'],
                         body: [
                             ['ID', 'Name', 'Category', 'Description', 'Sell Price', 'Cost Price', 'Show Item', 'Quantity'],
-                            ...data.map(item => [
+                            ...allItems.map(item => [
                                 item.item_id || '',
                                 item.name || '',
                                 item.category || '',
@@ -678,10 +915,8 @@ $(document).ready(function () {
     }
     
     function exportToExcel() {
-        // Get all data from the DataTable
-        var data = table.rows().data().toArray();
-        
-        if (data.length === 0) {
+        // Use allItems array instead of DataTable data
+        if (allItems.length === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'No Data',
@@ -694,7 +929,7 @@ $(document).ready(function () {
         var csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "ID,Name,Category,Description,Sell Price,Cost Price,Show Item,Quantity\n";
         
-        data.forEach(item => {
+        allItems.forEach(item => {
             var row = [
                 item.item_id || '',
                 (item.name || '').replace(/"/g, '""'), // Escape quotes
