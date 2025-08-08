@@ -261,6 +261,8 @@ $(document).ready(function () {
         $(this).addClass('btn-primary').removeClass('btn-outline-primary');
         $('#infiniteScrollModeBtn').removeClass('btn-success').addClass('btn-outline-success');
         $(window).off('scroll.infinite');
+        // Hide floating arrow button in pagination mode
+        $('#floatingArrowBtn').removeClass('show');
     });
     $(document).on('click', '#infiniteScrollModeBtn', function() {
         viewMode = 'infinite';
@@ -268,6 +270,8 @@ $(document).ready(function () {
         displayItems(allItems);
         $(this).addClass('btn-success').removeClass('btn-outline-success');
         $('#paginationModeBtn').removeClass('btn-primary').addClass('btn-outline-primary');
+        // Show floating arrow button in infinite scroll mode
+        $('#floatingArrowBtn').addClass('show');
         // Attach infinite scroll
         $(window).off('scroll.infinite').on('scroll.infinite', function() {
             if (viewMode !== 'infinite') return;
@@ -278,6 +282,60 @@ $(document).ready(function () {
                 }
             }
         });
+    });
+
+    // Floating Arrow Button functionality
+    $(document).on('click', '#floatingArrowBtn', function() {
+        const $btn = $(this);
+        const $icon = $btn.find('i');
+        
+        if ($icon.hasClass('fa-arrow-down')) {
+            // Load all remaining items first if not all loaded, then scroll to bottom
+            if (infiniteScrollCount < allItems.length) {
+                infiniteScrollCount = allItems.length;
+                displayItems(allItems);
+                
+                // Wait for DOM to update, then scroll
+                setTimeout(function() {
+                    $('html, body').animate({
+                        scrollTop: $(document).height() - $(window).height()
+                    }, 800);
+                }, 100);
+            } else {
+                // Just scroll to bottom
+                $('html, body').animate({
+                    scrollTop: $(document).height() - $(window).height()
+                }, 800);
+            }
+        } else {
+            // Scroll to top of item cards
+            const itemCardsTop = $('#itemCards').offset().top - 100;
+            $('html, body').animate({
+                scrollTop: itemCardsTop
+            }, 800);
+        }
+    });
+
+    // Auto-toggle floating arrow button based on scroll position (only in infinite mode)
+    $(window).on('scroll', function() {
+        if (viewMode !== 'infinite' || !$('#floatingArrowBtn').hasClass('show')) return;
+        
+        const scrollTop = $(window).scrollTop();
+        const windowHeight = $(window).height();
+        const documentHeight = $(document).height();
+        const $btn = $('#floatingArrowBtn');
+        const $icon = $btn.find('i');
+        
+        // If near bottom (within 150px), show "Go to Top" arrow
+        if (scrollTop + windowHeight >= documentHeight - 150) {
+            $icon.removeClass('fa-arrow-down').addClass('fa-arrow-up');
+            $btn.attr('title', 'Go to Top');
+        }
+        // If not near bottom, show "Go to Bottom" arrow
+        else {
+            $icon.removeClass('fa-arrow-up').addClass('fa-arrow-down');
+            $btn.attr('title', 'Go to Bottom');
+        }
     });
 
     // Pagination bar click handler
